@@ -1,10 +1,14 @@
 import 'dart:io';
 
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:uuid/uuid.dart';
 
 import 'package:jara/core/constants/app_constants.dart';
 import 'package:jara/core/theme/app_colors.dart';
+import 'package:jara/domain/repositories/settings_repository.dart';
 import 'package:jara/features/settings/domain/change_request_model.dart';
 import 'package:jara/features/settings/domain/change_request_service.dart';
 import 'package:jara/features/settings/presentation/providers/settings_provider.dart';
@@ -48,7 +52,7 @@ class ChangeRequestSection extends ConsumerWidget {
 
   void _openSheet(
     BuildContext context,
-    dynamic repo, // SettingsRepository
+    SettingsRepository repo,
     String initialType,
   ) {
     final titleController = TextEditingController();
@@ -196,15 +200,37 @@ class ChangeRequestSection extends ConsumerWidget {
     String type,
     String title,
     String description,
-    dynamic repo, // SettingsRepository
+    SettingsRepository repo,
   ) async {
     final service = const ChangeRequestService();
 
-    // Get device token (or generate one)
+    // Capture screen size before any awaits (context must not cross gaps).
+    final screenSize = MediaQuery.sizeOf(screenCtx);
+
+    // Get device token (UUID, generated on first submit — plan §8.1)
     String? deviceToken = await repo.getDeviceToken();
     if (deviceToken == null) {
-      deviceToken = DateTime.now().millisecondsSinceEpoch.toRadixString(36);
+      deviceToken = const Uuid().v4();
       await repo.setDeviceToken(deviceToken);
+    }
+
+    // Collect device info automatically (plan §8.1)
+    final packageInfo = await PackageInfo.fromPlatform();
+    final deviceInfo = DeviceInfoPlugin();
+
+    String deviceModel = 'unknown';
+    try {
+      if (Platform.isAndroid) {
+        final android = await deviceInfo.androidInfo;
+        deviceModel = '${android.manufacturer} ${android.model}';
+      } else if (Platform.isIOS) {
+        final ios = await deviceInfo.iosInfo;
+        deviceModel = ios.utsname.machine;
+      } else {
+        deviceModel = Platform.operatingSystem;
+      }
+    } catch (_) {
+      // Device info is best-effort — never block a submission on it.
     }
 
     final request = ChangeRequest(
@@ -212,10 +238,10 @@ class ChangeRequestSection extends ConsumerWidget {
       type: type,
       title: title,
       description: description,
-      appVersion: '1.0.0',
+      appVersion: packageInfo.version,
       osVersion: Platform.operatingSystemVersion,
-      deviceModel: 'unknown',
-      screenSize: 'unknown',
+      deviceModel: deviceModel,
+      screenSize: '${screenSize.width.round()}x${screenSize.height.round()}',
       locale: Platform.localeName,
     );
 

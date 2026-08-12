@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:jara/core/constants/app_constants.dart';
+import 'package:jara/domain/repositories/run_repository.dart';
 import 'package:jara/domain/use_cases/export_run.dart';
 import 'package:jara/features/settings/presentation/providers/settings_provider.dart';
 
@@ -51,7 +52,7 @@ class _ExportTile extends ConsumerWidget {
   final String label;
   final IconData icon;
   final ExportFormat format;
-  final dynamic repository; // RunRepository
+  final RunRepository repository;
 
   const _ExportTile({
     required this.label,
