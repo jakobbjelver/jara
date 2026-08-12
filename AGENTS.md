@@ -80,7 +80,34 @@ Core          →  Theme, router, constants, extensions, utilities
 
 ---
 
-## 4. Project Structure
+---
+
+## 4. Verified Package Stack
+
+These packages are chosen because they're well-maintained, widely used, and solve
+problems we'd otherwise have to write ourselves. **Never write custom code for
+something a package already does.**
+
+| Package | Version | Purpose | Why Not Custom |
+|---------|---------|---------|----------------|
+| `flutter_riverpod` | ^3.4.0 | State management (Notifier API) | Industry standard for Flutter state |
+| `riverpod_annotation` | ^4.0.0 | Code generation for providers | Eliminates boilerplate |
+| `go_router` | ^14.0.0 | Navigation & routing | Official Flutter recommendation |
+| `drift` | ^2.21.0 | SQLite ORM with type-safe queries | Handles migrations, reactive queries |
+| `geolocator` | ^14.0.0 | GPS location (Baseflow) | Battle-tested, cross-platform |
+| `flutter_background_service` | ^5.0.0 | Background isolate for GPS | Keeps GPS alive when app is backgrounded |
+| `flutter_map` | ^8.3.0 | OpenStreetMap integration | No API key, free, pure Flutter |
+| `flutter_map_location_marker` | ^10.3.0 | User location on map | Saves writing a custom map layer |
+| `fl_chart` | ^0.69.0 | Charts (pace, elevation, HR) | Lightweight, customizable |
+| `activity_files` | ^0.5.0 | GPX/TCX/FIT/CSV/GeoJSON parsing | Auto-detects format, parses everything |
+| `freezed` | ^2.5.0 | Immutable data classes + JSON | Eliminates manual `fromJson`/`toJson` |
+| `encrypt` | ^5.0.0 | AES-256 encryption for backups | Don't write crypto yourself |
+| `mocktail` | ^1.0.0 | Test mocking | Standard for Dart testing |
+
+**Before adding any new dependency:** Check that it doesn't overlap with an existing
+one. Check pub.dev for popularity, maintenance status, and license compatibility (GPL-3.0).
+
+## 5. Project Structure
 
 ```
 lib/
@@ -114,7 +141,7 @@ lib/
 
 ---
 
-## 5. Conventions
+## Conventions
 
 ### Naming
 
@@ -296,11 +323,12 @@ Before pushing, review your own diff against these questions:
 1. **SOLID**: Single responsibility? Open/closed? No god classes?
 2. **GOAL.md**: Does this change fit JARA's philosophy? Does it violate any "Won't" item?
 3. **No workarounds**: Is every API call, every pattern, justified by official documentation?
-4. **Tests**: Are new behaviors tested? Do existing tests still pass?
-5. **Forward-looking**: Does this paint us into a corner for V1.5 features? Check `FeatureFlags`.
-6. **Grayscale**: Does the UI use green/color where it should be grayscale? Amber for warnings? Red for errors?
-7. **Domain purity**: Does `lib/domain/` contain any Flutter imports?
-8. **No dead code**: No commented-out blocks, no unused imports, no stale variables.
+4. **No reinventing wheels**: Could an existing package do this? Did you check pub.dev and gh_grep first?
+5. **Tests**: Are new behaviors tested? Do existing tests still pass?
+6. **Forward-looking**: Does this paint us into a corner for V1.5 features? Check `FeatureFlags`.
+7. **Grayscale**: Does the UI use green/color where it should be grayscale? Amber for warnings? Red for errors?
+8. **Domain purity**: Does `lib/domain/` contain any Flutter imports?
+9. **No dead code**: No commented-out blocks, no unused imports, no stale variables.
 
 ### Automated Review (Pre-Push)
 

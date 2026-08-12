@@ -85,11 +85,23 @@ Grayscale-at-rest is the default, but users can choose themes:
   and a background tint. The grayscale-at-rest principle holds across all themes — amber
   and red remain the only semantic colors.
 
-### 3.4 No Workarounds
+### 3.4 No Workarounds, No Reinventing Wheels
 
 Research before implementing. Read official docs. Use `gh_grep` for real-world examples.
 If it's not documented behavior, it's a bug waiting to happen. Never commit code that
 "seems to work" — know why it works.
+
+**Prefer established packages over custom solutions.** Before writing a custom parser,
+validator, exporter, or utility, search pub.dev and GitHub for an existing package that
+already does it. The project values more dependencies over more custom code. Examples:
+
+- GPX/TCX/FIT parsing → `activity_files` package (instead of custom XML parsing)
+- Map location indicator → `flutter_map_location_marker` (instead of custom layer)
+- Background service → `flutter_background_service` (instead of raw platform channels)
+- GPS → `geolocator` (instead of raw `CLLocationManager` / `FusedLocationProvider`)
+
+The litmus test: if you find yourself writing an XML parser, a binary format reader,
+or platform-channel boilerplate, stop and search for an existing package first.
 
 ### 3.5 Forward-Looking Architecture
 
@@ -234,7 +246,7 @@ for any of these will be closed with a reference to this section.
 | Maps | `flutter_map` + OpenStreetMap tiles | No API key needed, works offline with pre-cached tiles, no Google dependency |
 | Health data | `health` package | Wraps HealthKit (iOS) + Health Connect (Android) |
 | Charts | `fl_chart` | Lightweight, customizable, good for pace/elevation/HR charts |
-| Export/Import | Custom (XML for GPX/TCX, CSV writer) | No heavy dependency needed — these are simple formats |
+| Export/Import | `activity_files` package | Pure Dart GPX/TCX/FIT/CSV/GeoJSON parser — no custom XML code |
 | Backup | Encrypted ZIP → platform file picker | User chooses where to save; iCloud/Google Drive via native file dialog |
 | CI | GitHub Actions | `ubuntu-latest` for Android, `macos-15` for iOS (free + unlimited for public repos) |
 | Change Request backend | Cloudflare Worker | Receives anonymous reports, stores in KV or D1, Hermes reads via API |
