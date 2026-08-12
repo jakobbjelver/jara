@@ -5,11 +5,14 @@ import 'package:geolocator/geolocator.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:jara/core/constants/app_constants.dart';
+import 'package:jara/core/utils/audio_cue_service.dart';
+import 'package:jara/data/data_sources/background_location_service.dart';
 import 'package:jara/data/data_sources/gps_data_source.dart';
 import 'package:jara/domain/entities/lap.dart';
 import 'package:jara/domain/entities/route_point.dart';
 import 'package:jara/domain/entities/run.dart';
 import 'package:jara/domain/repositories/run_repository.dart';
+import 'package:jara/domain/repositories/settings_repository.dart';
 import 'package:jara/features/run_tracking/domain/run_state_machine.dart';
 import 'package:jara/features/settings/presentation/providers/settings_provider.dart';
 
@@ -17,8 +20,11 @@ import 'package:jara/features/settings/presentation/providers/settings_provider.
 class RunTrackingNotifier extends StateNotifier<RunState> {
   final RunRepository _repo;
   final GpsDataSource _gps;
+  final SettingsRepository _settings;
 
   StreamSubscription<GpsPosition>? _gpsSubscription;
+  StreamSubscription<GpsPosition>? _backgroundSubscription;
+  AudioCueService? _audioCues;
 
   final List<({double lat, double lon, DateTime ts})> _route = [];
   final List<Lap> _laps = [];
@@ -32,7 +38,8 @@ class RunTrackingNotifier extends StateNotifier<RunState> {
   Timer? _elapsedTimer;
   DateTime? _startTime;
 
-  RunTrackingNotifier(this._repo, this._gps) : super(const RunState.idle());
+  RunTrackingNotifier(this._repo, this._gps, this._settings)
+    : super(const RunState.idle());
 
   // ── Public API ─────────────────────────────────────────────
 
@@ -73,7 +80,19 @@ class RunTrackingNotifier extends StateNotifier<RunState> {
       (_) => _tickElapsed(),
     );
 
+    // Foreground GPS stream
     _gpsSubscription = _gps.positionStream.listen(_onPosition, onError: (_) {});
+
+    // Background GPS (keeps tracking when the phone is locked)
+    await BackgroundLocationService.start();
+    _backgroundSubscription = BackgroundLocationService.backgroundPositions
+        .listen(_onPosition, onError: (_) {});
+
+    // Audio cues at the configured interval
+    final cueInterval = await _settings.getAudioCueInterval();
+    _audioCues = AudioCueService();
+    _audioCues!.reset();
+    _scheduleCue(cueInterval);
 
     state = RunState.running(startTime: now, distance: 0, pace: 0, route: []);
   }
@@ -99,6 +118,9 @@ class RunTrackingNotifier extends StateNotifier<RunState> {
     );
     _repo.saveRun(_currentRun!);
 
+    // Pause background GPS too — no tracking while paused.
+    BackgroundLocationService.stop();
+
     state = RunState.paused(
       startTime: startTime,
       distance: _totalDistanceMeters,
@@ -120,6 +142,11 @@ class RunTrackingNotifier extends StateNotifier<RunState> {
     );
 
     _gpsSubscription = _gps.positionStream.listen(_onPosition, onError: (_) {});
+
+    // Re-enable background GPS.
+    BackgroundLocationService.start();
+    _backgroundSubscription = BackgroundLocationService.backgroundPositions
+        .listen(_onPosition, onError: (_) {});
 
     run.copyWith(updatedAt: DateTime.now());
     _repo.saveRun(run);
@@ -168,7 +195,34 @@ class RunTrackingNotifier extends StateNotifier<RunState> {
     await _repo.saveRun(completed);
     _currentRun = null;
 
+    // Stop background GPS and audio cues.
+    await BackgroundLocationService.stop();
+    await _audioCues?.dispose();
+    _audioCues = null;
+
     state = RunState.stopped(runId: completed.id);
+  }
+
+  /// Schedules audio cues at the configured interval.
+  ///
+  /// Interval codes (from settings): 0 = off, 1 = 30s, 2 = 1min,
+  /// 3 = 1km, 4 = 5min.
+  void _scheduleCue(int intervalCode) {
+    if (intervalCode == 0) return;
+
+    final cueSeconds = switch (intervalCode) {
+      1 => 30,
+      2 => 60,
+      3 => 60, // 1 km — approximated by 1-minute beeps in V1
+      4 => 300,
+      _ => 0,
+    };
+    if (cueSeconds == 0) return;
+
+    Timer.periodic(Duration(seconds: cueSeconds), (_) {
+      if (state is! RunRunning) return;
+      _audioCues?.playCueFor(intervalCode);
+    });
   }
 
   /// Adds a manual lap marker.
@@ -280,6 +334,8 @@ class RunTrackingNotifier extends StateNotifier<RunState> {
   void _cancelGps() {
     _gpsSubscription?.cancel();
     _gpsSubscription = null;
+    _backgroundSubscription?.cancel();
+    _backgroundSubscription = null;
   }
 
   @override
@@ -296,5 +352,6 @@ final runTrackingProvider =
     StateNotifierProvider<RunTrackingNotifier, RunState>((ref) {
       final repo = ref.watch(runRepositoryProvider);
       final gps = ref.watch(gpsDataSourceProvider);
-      return RunTrackingNotifier(repo, gps);
+      final settings = ref.watch(settingsRepositoryProvider);
+      return RunTrackingNotifier(repo, gps, settings);
     });

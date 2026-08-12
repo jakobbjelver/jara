@@ -2,12 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:jara/app.dart';
+import 'package:jara/data/data_sources/background_location_service.dart';
 
-/// Entry point for the JARA running app.
-///
-/// Wraps the entire application tree in [ProviderScope] so that
-/// all Riverpod providers are available downstream.
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  BackgroundLocationService.initialize();
   runApp(const ProviderScope(child: JaraApp()));
 }
