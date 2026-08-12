@@ -1,0 +1,18 @@
+# Project workspace (internal planning, not for public repo)
+.hermes/
+
+# Flutter
+.dart_tool/
+.packages
+build/
+*.iml
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+
+# Dependencies
+pubspec.lock
