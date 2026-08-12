@@ -90,8 +90,7 @@ something a package already does.**
 
 | Package | Version | Purpose | Why Not Custom |
 |---------|---------|---------|----------------|
-| `flutter_riverpod` | ^3.4.0 | State management (Notifier API) | Industry standard for Flutter state |
-| `riverpod_annotation` | ^4.0.0 | Code generation for providers | Eliminates boilerplate |
+| `flutter_riverpod` | ^2.4.0 | State management (manual providers) | Industry standard for Flutter state |
 | `go_router` | ^14.0.0 | Navigation & routing | Official Flutter recommendation |
 | `drift` | ^2.21.0 | SQLite ORM with type-safe queries | Handles migrations, reactive queries |
 | `geolocator` | ^14.0.0 | GPS location (Baseflow) | Battle-tested, cross-platform |
@@ -232,15 +231,22 @@ Use the mapper (`RunMapper`) to convert between domain entities and drift data c
 | Reactive streams (run history, GPS positions) | `StreamProvider` |
 | Injected dependencies (database, repository) | `Provider` |
 
-### Code Generation
+### Providers
 
-Riverpod supports code generation for providers. If the codebase uses `@riverpod` annotations:
+JARA uses **manual providers** (Riverpod 2.x — no code generation). See the plan's
+risk assessment: code generation added dependency friction, so we use the manual
+API instead. Define providers as top-level `final` variables:
 
-```bash
-dart run build_runner build --delete-conflicting-outputs
+```dart
+final runHistoryProvider = StreamProvider<List<Run>>((ref) {
+  final repository = ref.watch(runRepositoryProvider);
+  return repository.watchRunHistory();
+});
 ```
 
-If code generation causes friction, fall back to manual providers — Riverpod supports both.
+Shared DI providers (`databaseProvider`, `runRepositoryProvider`,
+`gpsDataSourceProvider`, `settingsRepositoryProvider`) live in
+`lib/features/settings/presentation/providers/settings_provider.dart`.
 
 ### Reading Providers in Widgets
 
@@ -393,7 +399,7 @@ dart run build_runner build --delete-conflicting-outputs
 |------|---------|
 | `GOAL.md` | Project philosophy, feature matrix, what JARA is/isn't |
 | `PLAN.md` (in `.hermes/plans/`) | Current implementation plan |
-| `lib/core/feature_flags.dart` | V1.5 feature gates |
+| `lib/core/utils/feature_flags.dart` | V1.5 feature gates |
 | `lib/data/database/app_database.dart` | Drift database definition |
 | `lib/domain/repositories/run_repository.dart` | Abstract repository interface |
 | `lib/core/theme/app_colors.dart` | Fixed semantic color tokens |
