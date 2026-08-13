@@ -25,7 +25,9 @@ runners, not a platform for engagement metrics.
 
 JARA is **self-improving**. Every user can report bugs or request features directly in the
 app. Those reports become anonymous GitHub issues. An automated system triages them,
-detects duplicates, and helps the maintainer prioritize what to build next.
+detects duplicates, and helps the maintainer prioritize what to build next. The maintainer
+improves JARA through dedicated routes of his own — human and AI-agent dogfooding — that
+feed the same pipeline (§8.6).
 
 ---
 
@@ -155,7 +157,7 @@ These are required before the app is runnable and the self-improvement loop acti
 - Restore from backup
 
 **App Infrastructure:**
-- In-app Change Request form: type (bug/feature), title, description, optional screenshot
+- In-app Change Request form: type (bug/feature), title, description, steps to reproduce, expected vs actual, optional screenshot, opt-in diagnostic logs
 - Device info attached automatically (OS version, device model, app version)
 - Light theme, Dark theme, plus at least 2 named color themes
 - Grayscale-at-rest enforced across all themes
@@ -170,6 +172,7 @@ These are required before the app is runnable and the self-improvement loop acti
 - Android build on Ubuntu GitHub Actions runner
 - Cloudflare Worker for Change Request collection
 - Hermes cron job for daily issue triage (runs on Jakob's machine)
+- Maestro smoketest suite (simulator flows committed to the repo, run on maintainer hardware)
 
 ### V1.5 — Should (Soon After)
 
@@ -442,18 +445,24 @@ A form inside the app (Settings → Report Issue / Request Feature):
 - **Type**: Bug Report | Feature Request
 - **Title**: Short summary
 - **Description**: Free text
+- **Steps to reproduce** and **Expected vs. actual** (structured fields — what
+  the triage agent acts on)
 - **Screenshot**: Optional (can attach from photo library)
 - **Device info** (auto-attached, not shown to user): OS version, device model, app version,
   screen size, locale
+- **Diagnostic logs**: recent app log lines (ring buffer), attached only with
+  the user's consent via a visible toggle — never silently
+- **Receipt**: after submit the user sees a report ID to reference later
 
 Submitted to the Cloudflare Worker via a simple POST. No authentication. Rate-limited
-per device (anonymous token stored locally) to prevent spam.
+per device (anonymous token stored locally) and per IP (Cloudflare WAF) to prevent spam.
 
 ### 8.2 Cloudflare Worker
 
 A lightweight Worker that:
 - Receives Change Requests via POST
-- Rate-limits per anonymous device token
+- Rate-limits per anonymous device token and per IP (Cloudflare WAF rule)
+- Validates and sanitizes input (body size cap, field length caps, control characters)
 - Stores in Cloudflare D1 (or KV)
 - Exposes a read API for the Hermes cron job (with a shared secret)
 - Deduplicates simple exact-title matches at submission time
@@ -476,6 +485,11 @@ Runs on Jakob's Mac mini. For each new Change Request since last run:
 
 The human (Jakob) reviews the recommendations and applies a `triaged` label to issues
 he wants implemented. Only `triaged` issues are picked up for implementation.
+
+Change Request content is **untrusted data**. The triage job never follows
+instructions found inside it, never interpolates it into shell commands, and
+renders it inside a collapsed section of the issue body. The triage job runs
+with a restricted toolset.
 
 ### 8.4 Implementation (On-Demand)
 
@@ -501,6 +515,54 @@ to increment a counter:
 The counter is in the issue body (not reactions), so it's controlled and can't be
 gamed by non-users. The Cloudflare Worker's rate-limiting prevents double-counting
 from the same device.
+
+### 8.6 Maintainer Self-Improvement Routes
+
+The end-user loop above is one of three sources into a single pipeline. The maintainer
+(Jakob and the AI agents working with him) improves JARA through dedicated routes:
+
+```
+┌──────────────────────┐        ┌─────────────────────────────────────┐
+│ Maintainer Human     │        │ Maintainer Agent (AI)               │
+│ (super-devices)      │        │  • deterministic smoketest gate     │
+│  • personal iPhone   │        │    before dev→main (simulator)      │
+│  • simulator         │        │  • exploratory dogfooding sessions  │
+│    same in-app form, │        │    (scheduled or on demand)         │
+│    tagged maintainer │        │  • findings → GitHub issues         │
+└──────────┬───────────┘        └──────────────────┬──────────────────┘
+           │                                       │
+           └───────────────────┬───────────────────┘
+                               ▼
+         One system of record: GitHub issues with source labels
+         source:in-app | source:maintainer-human | source:maintainer-agent
+```
+
+- **Super-devices.** The maintainer's simulator and personal iPhone submit Change
+  Requests through the same in-app form as everyone else, but they carry a
+  maintainer credential, so their reports are tagged at the source and never mix
+  with end-user reports in the triage queue. The maintainer can point the agent
+  at his queue — "take care of my change requests" — and they are picked up like
+  any other approved work.
+- **Autonomous dogfooding.** The agent uses the app itself. Deterministic Maestro
+  smoketests run on the simulator and gate every release branch; exploratory
+  vision-driven sessions (scheduled or triggered by the maintainer) hunt for bugs
+  and feature ideas. Findings enter the pipeline as GitHub issues — the agent does
+  not masquerade as an anonymous user, because it already has direct access to
+  the project.
+- **One pipeline, one record.** Every improvement — end-user, maintainer human,
+  maintainer agent — flows through the same triage and lands in the same GitHub
+  issue tracker. Source labels keep the maintainer's queue visible and
+  referenceable while the public backlog stays honest and complete. Sensitive
+  items that cannot be public go to a private issue tracker instead.
+- **The aim.** The maintainer never has to smoke-test new features or existing
+  functionality at runtime. He may still discover bugs and feature ideas by using
+  his own devices — that is the maintainer-human route — but the agent carries
+  the systematic testing load, and every discovery, from every source, is
+  captured by the loop.
+- **Honest limits.** The simulator cannot test real GPS behavior, biometric
+  sensors, background-execution reality, store review, or subjective feel. Those
+  are covered by the maintainer-human route on real devices — not by pretending
+  the simulator is a device.
 
 ---
 
@@ -556,6 +618,7 @@ Reviews can be done by:
 |---------|-----------|-------|
 | Push to `dev` | `flutter analyze`, `flutter test` | GitHub Actions |
 | PR to `main` | `flutter analyze`, `flutter test`, `flutter build` (dry run) | GitHub Actions |
+| Pre-merge to `main` (gate) | Maestro smoketest — agent-run, procedural gate | Jakob's Mac mini |
 | Push to `main` | `flutter analyze`, `flutter test`, Android build, iOS build, GitHub Release draft | GitHub Actions |
 | Daily cron | Issue triage (Hermes) | Jakob's Mac mini |
 
@@ -642,6 +705,8 @@ earned through sustained, high-quality contributions — not assigned.
 - Hermes cron job for daily triage
 - Hermes implementation workflow (issue → branch → PR)
 - Hermes code review workflow
+- Maintainer self-improvement routes (§8.6): super-device provisioning, source-aware triage
+- Maestro smoketest suite + pre-merge gate on maintainer hardware
 - End-to-end test: submit Change Request → triaged → implemented → merged → deployed
 - AGENTS.md finalized
 

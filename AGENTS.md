@@ -320,6 +320,21 @@ class MockRunRepository extends Mock implements RunRepository {}
 
 For drift database mocks, use `drift_dev`'s generated mocks or create an in-memory database for tests.
 
+### Smoketest (Mandatory Before a dev→main PR)
+
+Unit and widget tests are not enough. Before a `dev` → `main` PR can open, the
+app must be exercised on the iOS simulator (maintainer hardware):
+
+1. Run `./tool/smoketest.sh` — boots the simulator, builds, installs, runs the
+   Maestro flows in `smoketest/flows/`.
+2. Attach the flow log + screenshots to the PR.
+3. A missing or failed smoketest is a hard block in review.
+
+Flows cover app boot, tab navigation, a simulated-GPS run (start → save →
+detail), Change Request submit, and backup export. Flutter semantics are
+exposed to Maestro through the accessibility tree — give interactive widgets
+stable semantic labels.
+
 ---
 
 ## 9. Code Review Checklist
@@ -335,6 +350,7 @@ Before pushing, review your own diff against these questions:
 7. **Grayscale**: Does the UI use green/color where it should be grayscale? Amber for warnings? Red for errors?
 8. **Domain purity**: Does `lib/domain/` contain any Flutter imports?
 9. **No dead code**: No commented-out blocks, no unused imports, no stale variables.
+10. **Smoketest** (dev→main PRs): did `tool/smoketest.sh` pass on the Mac mini, with evidence attached?
 
 ### Automated Review (Pre-Push)
 
@@ -398,6 +414,8 @@ dart run build_runner build --delete-conflicting-outputs
 | File | Purpose |
 |------|---------|
 | `GOAL.md` | Project philosophy, feature matrix, what JARA is/isn't |
+| `smoketest/flows/` | Maestro simulator flows — the dev→main gate |
+| `tool/smoketest.sh` | Runs the smoketest suite on maintainer hardware |
 | `PLAN.md` (in `.hermes/plans/`) | Current implementation plan |
 | `lib/core/utils/feature_flags.dart` | V1.5 feature gates |
 | `lib/data/database/app_database.dart` | Drift database definition |
