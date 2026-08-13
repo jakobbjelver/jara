@@ -39,7 +39,10 @@ class AppEndpoints {
   AppEndpoints._();
 
   /// Cloudflare Worker for Change Request submission.
-  /// TODO: Replace with the deployed worker URL when it goes live.
+  ///
+  /// Production domain will be api.jara.messer.wtf once the custom domain
+  /// is wired on the messer.wtf zone (the .dev zone 301-redirects away).
+  /// The workers.dev URL works today and is fine for dev/TestFlight.
   static const String changeRequest =
-      'https://jara-api.example.com/change-request';
+      'https://jara-change-requests.jakobbjelver.workers.dev/change-request';
 }

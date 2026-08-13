@@ -2,14 +2,12 @@
 name = "jara-change-requests"
 main = "index.js"
 compatibility_date = "2026-08-01"
+workers_dev = true
 
-# D1 database binding — create first:
-#   wrangler d1 create jara-change-requests
-# then paste the database_id here.
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "jara-change-requests"
-# database_id = "<database_id>"
+[[d1_databases]]
+binding = "DB"
+database_name = "jara-change-requests"
+database_id = "c2de4475-93f4-4b75-8bcd-37376db72865"
 
 # Shared secret for the Hermes triage cron read API.
 # Set via: wrangler secret put TRIAGE_SECRET
