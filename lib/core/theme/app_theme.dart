@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import 'app_colors.dart';
-import 'app_text_styles.dart';
 
 /// Sealed class representing all available themes in JARA.
 sealed class AppTheme {
@@ -57,9 +56,11 @@ sealed class AppTheme {
         backgroundColor: grayscaleScheme.surface,
         elevation: 0,
         centerTitle: false,
-        titleTextStyle: AppTextStyles.heading3(
-          _dummyContext(isDark),
-        ).copyWith(color: grayscaleScheme.onSurface),
+        titleTextStyle: TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+          color: grayscaleScheme.onSurface,
+        ),
       ),
       tabBarTheme: TabBarThemeData(
         labelColor: accentColor,
@@ -119,13 +120,6 @@ sealed class AppTheme {
         foregroundColor: isDark ? Colors.black : Colors.white,
       ),
     );
-  }
-
-  /// Minimal context for text style resolution during theme construction.
-  static BuildContext _dummyContext(bool isDark) {
-    // This is only used for text style resolution. The actual context
-    // will be provided by the widget tree at runtime.
-    throw UnimplementedError('Use Theme.of(context) instead');
   }
 }
 
