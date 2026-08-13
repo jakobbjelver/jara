@@ -1,5 +1,7 @@
 -- JARA Change Requests — Cloudflare D1 schema
 -- Run: wrangler d1 execute jara-change-requests --file=./schema.sql
+-- NOTE: for an EXISTING remote DB, CREATE TABLE IF NOT EXISTS is a no-op —
+--       apply column additions with ALTER TABLE (see PLAN-002 §3 order 0).
 
 CREATE TABLE IF NOT EXISTS change_requests (
   id TEXT PRIMARY KEY,
@@ -7,12 +9,18 @@ CREATE TABLE IF NOT EXISTS change_requests (
   type TEXT NOT NULL CHECK(type IN ('bug', 'feature')),
   title TEXT NOT NULL,
   description TEXT NOT NULL,
+  steps_to_reproduce TEXT,
+  expected_actual TEXT,
+  logs TEXT,
   app_version TEXT,
   os_version TEXT,
   device_model TEXT,
   screen_size TEXT,
   locale TEXT,
   screenshot_url TEXT,
+  source TEXT NOT NULL DEFAULT 'in_app'
+    CHECK(source IN ('in_app', 'maintainer_human', 'maintainer_agent')),
+  is_maintainer INTEGER NOT NULL DEFAULT 0,
   github_issue_number INTEGER,
   github_issue_url TEXT,
   status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'triaged', 'duplicate', 'rejected')),
