@@ -69,7 +69,8 @@ sealed class ChangeRequestResult {
   const factory ChangeRequestResult.rateLimited() = _RateLimited;
 
   bool get isSuccess => this is _Success;
-  bool get isDuplicate => this is _Success && (this as _Success).status == 'duplicate';
+  bool get isDuplicate =>
+      this is _Success && (this as _Success).status == 'duplicate';
   String? get id => this is _Success ? (this as _Success).id : null;
   String? get error => this is _Failure ? (this as _Failure).message : null;
 }

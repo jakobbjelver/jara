@@ -24,8 +24,9 @@ class MaintainerTokenResolver {
   const MaintainerTokenResolver();
 
   static const String fileName = 'maintainer_token.json';
-  static const String _dartDefine =
-      String.fromEnvironment('JARA_MAINTAINER_TOKEN');
+  static const String _dartDefine = String.fromEnvironment(
+    'JARA_MAINTAINER_TOKEN',
+  );
 
   /// Project checkout path used by the maintainer's iOS simulator debug
   /// builds. Wrapped in try/catch — never throws, never blocks a submission.

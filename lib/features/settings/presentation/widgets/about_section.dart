@@ -24,7 +24,9 @@ class AboutSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final tapGate = _TapGate(onUnlock: () => _showDeveloperDialog(context, ref));
+    final tapGate = _TapGate(
+      onUnlock: () => _showDeveloperDialog(context, ref),
+    );
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
@@ -119,7 +121,9 @@ class AboutSection extends ConsumerWidget {
 
   Future<void> _showDeveloperDialog(BuildContext context, WidgetRef ref) async {
     final controller = TextEditingController();
-    final existing = await ref.read(settingsRepositoryProvider).getMaintainerToken();
+    final existing = await ref
+        .read(settingsRepositoryProvider)
+        .getMaintainerToken();
     if (existing != null) controller.text = existing;
 
     if (!context.mounted) return;

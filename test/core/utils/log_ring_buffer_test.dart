@@ -25,7 +25,10 @@ void main() {
       expect(lines.length, LogRingBuffer.maxLines);
       // Oldest line (0) evicted, newest present.
       expect(buffer.dump(), isNot(contains('ring-test-line-0')));
-      expect(buffer.dump(), contains('ring-test-line-${LogRingBuffer.maxLines}'));
+      expect(
+        buffer.dump(),
+        contains('ring-test-line-${LogRingBuffer.maxLines}'),
+      );
       // Just a sanity check that the buffer was exercised.
       expect(before, isA<int>());
     });

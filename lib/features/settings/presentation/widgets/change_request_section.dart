@@ -224,8 +224,7 @@ class ChangeRequestSection extends ConsumerWidget {
                           'no personal data — only app diagnostics.',
                         ),
                         value: includeLogs,
-                        onChanged: (v) =>
-                            setSheetState(() => includeLogs = v),
+                        onChanged: (v) => setSheetState(() => includeLogs = v),
                       ),
                       const SizedBox(height: AppSpacing.sm),
                     ],
@@ -319,7 +318,10 @@ class ChangeRequestSection extends ConsumerWidget {
       locale: Platform.localeName,
     );
 
-    final result = await service.submit(request, maintainerToken: maintainerToken);
+    final result = await service.submit(
+      request,
+      maintainerToken: maintainerToken,
+    );
 
     if (sheetCtx.mounted) Navigator.of(sheetCtx).pop();
 
