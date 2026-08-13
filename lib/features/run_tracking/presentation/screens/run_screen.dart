@@ -97,27 +97,31 @@ class _IdleBody extends StatelessWidget {
         const Spacer(),
         // ── Start Run button ──
         Center(
-          child: GestureDetector(
-            onTap: onStart,
-            child: Container(
-              width: 160,
-              height: 160,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: theme.colorScheme.primary,
-                boxShadow: [
-                  BoxShadow(
-                    color: theme.colorScheme.primary.withValues(alpha: 0.3),
-                    blurRadius: 24,
-                    offset: const Offset(0, 8),
+          child: Semantics(
+            label: 'Start Run',
+            button: true,
+            child: GestureDetector(
+              onTap: onStart,
+              child: Container(
+                width: 160,
+                height: 160,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: theme.colorScheme.primary,
+                  boxShadow: [
+                    BoxShadow(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                      blurRadius: 24,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.play_arrow_rounded,
+                    size: 72,
+                    color: Colors.white,
                   ),
-                ],
-              ),
-              child: const Center(
-                child: Icon(
-                  Icons.play_arrow_rounded,
-                  size: 72,
-                  color: Colors.white,
                 ),
               ),
             ),

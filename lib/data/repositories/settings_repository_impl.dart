@@ -9,6 +9,7 @@ class SettingsRepositoryImpl implements SettingsRepository {
   static const _keyAudioCue = 'audio_cue_interval';
   static const _keyDistanceUnit = 'distance_unit';
   static const _keyDeviceToken = 'device_token';
+  static const _keyMaintainerToken = 'maintainer_token';
 
   @override
   Future<String> getTheme() async {
@@ -68,5 +69,17 @@ class SettingsRepositoryImpl implements SettingsRepository {
   Future<void> setDeviceToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyDeviceToken, token);
+  }
+
+  @override
+  Future<String?> getMaintainerToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyMaintainerToken);
+  }
+
+  @override
+  Future<void> setMaintainerToken(String token) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyMaintainerToken, token);
   }
 }

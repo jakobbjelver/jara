@@ -29,4 +29,10 @@ abstract class SettingsRepository {
 
   /// Saves the anonymous device token.
   Future<void> setDeviceToken(String token);
+
+  /// Gets the maintainer token entered via the hidden Developer section.
+  Future<String?> getMaintainerToken();
+
+  /// Saves the maintainer token (hidden Developer section, Settings → About).
+  Future<void> setMaintainerToken(String token);
 }

@@ -4,6 +4,9 @@ class ChangeRequest {
   final String type; // 'bug' or 'feature'
   final String title;
   final String description;
+  final String? stepsToReproduce;
+  final String? expectedActual;
+  final String? logs;
   final String appVersion;
   final String osVersion;
   final String deviceModel;
@@ -21,6 +24,9 @@ class ChangeRequest {
     required this.deviceModel,
     required this.screenSize,
     required this.locale,
+    this.stepsToReproduce,
+    this.expectedActual,
+    this.logs,
     this.screenshotUrl,
   });
 
@@ -29,6 +35,9 @@ class ChangeRequest {
     'type': type,
     'title': title,
     'description': description,
+    'steps_to_reproduce': stepsToReproduce,
+    'expected_actual': expectedActual,
+    'logs': logs,
     'app_version': appVersion,
     'os_version': osVersion,
     'device_model': deviceModel,
