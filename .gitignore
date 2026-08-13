@@ -47,3 +47,6 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Maintainer agent token (debug builds only) — never commit
+maintainer_token.json

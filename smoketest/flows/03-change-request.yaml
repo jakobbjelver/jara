@@ -1,0 +1,31 @@
+# JARA smoketest — flow 3: Change Request submit
+# Debug build → auto-tags maintainer_agent via the gitignored token file.
+# Unique title (SMOKE_TS) avoids the worker's exact-title dedup on reruns.
+appId: com.jara.jara
+---
+- launchApp
+- tapOn: "Settings"
+- tapOn: "Report Bug"
+- assertVisible: "Report a Bug"
+- tapOn: "Title"
+- inputText: "Smoketest bug report ${SMOKE_TS}"
+- tapOn: "Description"
+- inputText: "Automated smoketest submission exercising the full maintainer route."
+- hideKeyboard
+- scrollUntilVisible:
+    element: "Steps to Reproduce"
+    direction: DOWN
+- tapOn: "Steps to Reproduce"
+- inputText: "1. Run the smoketest flow"
+- hideKeyboard
+- scrollUntilVisible:
+    element: "Expected vs Actual"
+    direction: DOWN
+- tapOn: "Expected vs Actual"
+- inputText: "Expected: pass. Actual: pass."
+- hideKeyboard
+- scrollUntilVisible:
+    element: "Submit"
+    direction: DOWN
+- tapOn: "Submit"
+- assertVisible: "(Report #[0-9a-f-]+ submitted|Already reported as #[0-9a-f-]+)"
