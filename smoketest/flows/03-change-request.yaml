@@ -1,29 +1,32 @@
 # JARA smoketest — flow 3: Change Request submit
 # Debug build → auto-tags maintainer_agent via the gitignored token file.
 # Unique title (SMOKE_TS) avoids the worker's exact-title dedup on reruns.
+# Note: no hideKeyboard — Flutter does not expose a standard keyboard
+# dismiss to XCUITest; the sheet scrolls with the keyboard open instead.
 appId: com.jara.jara
 ---
 - launchApp
-- tapOn: "Settings"
+- tapOn: "Settings.*"
+- scrollUntilVisible:
+    element: "Report Bug"
+    direction: DOWN
+    timeout: 20000
 - tapOn: "Report Bug"
 - assertVisible: "Report a Bug"
 - tapOn: "Title"
 - inputText: "Smoketest bug report ${SMOKE_TS}"
 - tapOn: "Description"
 - inputText: "Automated smoketest submission exercising the full maintainer route."
-- hideKeyboard
 - scrollUntilVisible:
     element: "Steps to Reproduce"
     direction: DOWN
 - tapOn: "Steps to Reproduce"
 - inputText: "1. Run the smoketest flow"
-- hideKeyboard
 - scrollUntilVisible:
     element: "Expected vs Actual"
     direction: DOWN
 - tapOn: "Expected vs Actual"
 - inputText: "Expected: pass. Actual: pass."
-- hideKeyboard
 - scrollUntilVisible:
     element: "Submit"
     direction: DOWN

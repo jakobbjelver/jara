@@ -3,10 +3,16 @@
 appId: com.jara.jara
 ---
 - launchApp
-- tapOn: "Start Run"
+- tapOn:
+    text: "Start Run"
+    index: 0
 - assertVisible: "Pause"
 - extendedWaitUntil:
     visible: "Stop"
     timeout: 15000
 - tapOn: "Stop"
-- assertVisible: "Go back"
+- scrollUntilVisible:
+    element: "Delete Run"
+    direction: DOWN
+    timeout: 20000
+- assertVisible: "Delete Run"

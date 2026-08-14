@@ -10,6 +10,13 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# Maestro lives in ~/.maestro/bin (curl installer); JDK 21 lives in
+# ~/Library/Java/JavaVirtualMachines (no-sudo Adoptium tarball).
+export PATH="$HOME/.maestro/bin:$PATH"
+if [ -z "${JAVA_HOME:-}" ]; then
+  export JAVA_HOME="$(/usr/libexec/java_home -v 21 2>/dev/null || true)"
+fi
+
 UDID="094D4A15-891A-4E86-9C8F-1AC2CAB460B3"
 APP_ID="com.jara.jara"
 TS="$(date +%s)"
@@ -36,8 +43,9 @@ xcrun simctl location "$UDID" start --speed=5 --interval=5 \
   - < "smoketest/fixtures/copenhagen_loop.waypoints"
 
 log "running Maestro flows"
-if maestro test smoketest/flows/; then
-  log "smoketest green"
+if maestro test -e SMOKE_TS="$SMOKE_TS" smoketest/flows/; then
+  xcrun simctl io "$UDID" screenshot "$OUT/final.png" >/dev/null 2>&1 || true
+  log "smoketest green — evidence in $OUT"
 else
   xcrun simctl io "$UDID" screenshot "$OUT/failure.png" >/dev/null 2>&1 || true
   cp -R "$HOME/.maestro/tests" "$OUT/maestro-tests" 2>/dev/null || true

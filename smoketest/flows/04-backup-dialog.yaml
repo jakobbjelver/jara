@@ -5,7 +5,7 @@
 appId: com.jara.jara
 ---
 - launchApp
-- tapOn: "Settings"
+- tapOn: "Settings.*"
 - scrollUntilVisible:
     element: "Create Backup"
     direction: DOWN
