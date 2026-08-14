@@ -680,13 +680,18 @@ earned through sustained, high-quality contributions — not assigned.
 
 ## 11. Project Phases
 
-### Phase 0: Planning (Current)
+> **Status (2026-08-14):** Phase 0–2 complete. Phase 3 (V1.5 Features) is
+> next. A maintainer-only tooling bridge (Portal Actions + device testing,
+> tracked in `.hermes/plans/`) sits between Phase 2 and Phase 3 and is not
+> a product phase.
+
+### Phase 0: Planning ✅ (complete 2026-08-12)
 - GOAL.md (this document)
 - AGENTS.md draft
 - Architecture decisions documented
 - Hermes `jara-project` skill created
 
-### Phase 1: Foundation
+### Phase 1: Foundation ✅ (complete 2026-08-13)
 - Flutter project scaffold with feature-based folder structure
 - Database layer (drift + migrations + forward-looking schema)
 - GPS/location layer (recording + background)
@@ -703,7 +708,7 @@ earned through sustained, high-quality contributions — not assigned.
 - CI pipeline (lint, test, build)
 - GitHub branch ruleset
 
-### Phase 2: Self-Improvement Activation
+### Phase 2: Self-Improvement Activation ✅ (complete 2026-08-14)
 - Hermes `jara-project` skill
 - Hermes cron job for daily triage
 - Hermes implementation workflow (issue → branch → PR)
@@ -712,18 +717,23 @@ earned through sustained, high-quality contributions — not assigned.
 - Maestro smoketest suite + pre-merge gate on maintainer hardware
 - End-to-end test: submit Change Request → triaged → implemented → merged → deployed
 - AGENTS.md finalized
+- First release path: dev→main PRs + CI build workflows green (iOS + Android),
+  CR screenshot upload + in-app status screen (§2), dogfooding vision loop
 
-### Phase 3: V1.5 Features
+### Phase 3: V1.5 Features (next — PLAN-004)
+- V1 polish from dogfooding findings (analytics chart issues #4/#5)
+- Dogfood cron activation (daily agent exploration, findings → issues)
 - As prioritized by Change Requests
-- Guided by GOAL.md feature matrix
+- Guided by GOAL.md feature matrix (§7)
+- TestFlight setup when the maintainer's Apple Developer subscription lands
 
-### Phase 4: Public Release
+### Phase 4: Public Release (future)
 - App Store submission
 - Play Store submission
 - Public repo announcement
 - Project website
 
-### Phase 5: Ongoing Maintenance
+### Phase 5: Ongoing Maintenance (future)
 - Fully driven by the self-improvement loop
 - Change Requests → Triage → Implementation → Release
 - Periodic GOAL.md review and amendment
