@@ -10,6 +10,11 @@
  *   POST   /change-request        — submit a change request (app → worker)
  *   GET    /change-requests       — list requests (triage bot, Bearer auth)
  *   PATCH  /change-requests/:id   — set triage status (triage bot, Bearer auth)
+ *   GET    /change-requests/by-token?device_token=… — a device's own reports
+ *           (status screen; the device token is the capability)
+ *   POST   /screenshot-upload     — upload a screenshot to R2 (worker-mediated
+ *           upload; returns a public unguessable URL) — see ADR-009
+ *   GET    /screenshots/:id       — serve an uploaded screenshot
  *
  * Maintainer intake (SELF-IMPROVEMENT.md §4): an optional X-Jara-Maintainer
  * header carries a maintainer token. The token is hashed and looked up in the
@@ -28,6 +33,21 @@ export default {
 
     if (request.method === 'GET' && url.pathname === '/change-requests') {
       return handleList(request, env, url);
+    }
+
+    if (request.method === 'GET' && url.pathname === '/change-requests/by-token') {
+      return handleByToken(request, env, url);
+    }
+
+    if (request.method === 'POST' && url.pathname === '/screenshot-upload') {
+      return handleScreenshotUpload(request, env);
+    }
+
+    const screenshotMatch = url.pathname.match(
+      /^\/screenshots\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.[a-z0-9]+)$/i,
+    );
+    if (request.method === 'GET' && screenshotMatch) {
+      return handleScreenshotServe(request, env, screenshotMatch[1]);
     }
 
     const patchMatch = url.pathname.match(/^\/change-requests\/([0-9a-fA-F-]{36})$/);
@@ -148,6 +168,28 @@ async function handleSubmit(request, env) {
     return json({ error: 'invalid_description' }, 400);
   }
 
+  // screenshot_url must point at this worker's own /screenshots/ route —
+  // the triage bot embeds it in GitHub issue bodies, so arbitrary URLs
+  // are an injection vector. (SELF-IMPROVEMENT.md: containment.)
+  const screenshotUrl = cleanString(body.screenshot_url, CAPS.screenshot_url);
+  if (screenshotUrl) {
+    const requestHost = new URL(request.url).host;
+    let parsed;
+    try {
+      parsed = new URL(screenshotUrl);
+    } catch {
+      return json({ error: 'invalid_screenshot_url' }, 400);
+    }
+    const valid =
+      parsed.host === requestHost &&
+      /^\/screenshots\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.[a-z0-9]+$/i.test(
+        parsed.pathname,
+      );
+    if (!valid) {
+      return json({ error: 'invalid_screenshot_url' }, 400);
+    }
+  }
+
   // Optional structured fields (PLAN-002 §1.9)
   const stepsToReproduce = cleanString(body.steps_to_reproduce, CAPS.steps_to_reproduce);
   const expectedActual = cleanString(body.expected_actual, CAPS.expected_actual);
@@ -208,7 +250,7 @@ async function handleSubmit(request, env) {
       cleanString(body.device_model, CAPS.device_model),
       cleanString(body.screen_size, CAPS.screen_size),
       cleanString(body.locale, CAPS.locale),
-      cleanString(body.screenshot_url, CAPS.screenshot_url),
+      screenshotUrl,
       source,
       isMaintainer,
       now,
@@ -241,10 +283,143 @@ async function handleList(request, env, url) {
   return json({ change_requests: results }, 200);
 }
 
+/**
+ * Screenshot upload (ADR-009): worker-mediated R2 upload.
+ *
+ * The app POSTs the raw image bytes (Content-Type: image/png|jpeg|webp,
+ * X-Jara-Device-Token header). The worker validates type + size (≤5 MB),
+ * stores the object under an unguessable UUID key in the SCREENSHOTS
+ * binding, and returns the public URL the app then sends as
+ * `screenshot_url` in the change-request POST.
+ */
+const SCREENSHOT_MAX_BYTES = 5 * 1024 * 1024;
+const SCREENSHOT_TYPES = new Map([
+  ['image/png', 'png'],
+  ['image/jpeg', 'jpg'],
+  ['image/webp', 'webp'],
+]);
+const SCREENSHOT_RATE_LIMIT = 20; // uploads per token per hour
+
+async function handleScreenshotUpload(request, env) {
+  const contentType = (request.headers.get('Content-Type') ?? '')
+    .split(';')[0]
+    .trim()
+    .toLowerCase();
+  const ext = SCREENSHOT_TYPES.get(contentType);
+  if (!ext) {
+    return json({ error: 'unsupported_media_type' }, 415);
+  }
+
+  const deviceToken = cleanString(
+    request.headers.get('X-Jara-Device-Token') ?? '',
+    CAPS.device_token,
+  );
+  if (!deviceToken) {
+    return json({ error: 'missing_device_token' }, 400);
+  }
+
+  // Per-token upload rate limit — audit table doubles as the counter.
+  const windowStart = new Date(Date.now() - RATE_WINDOW_MS).toISOString();
+  const { count } = await env.DB
+    .prepare(
+      `SELECT COUNT(*) as count FROM screenshot_uploads
+       WHERE device_token = ? AND created_at >= ?`,
+    )
+    .bind(deviceToken, windowStart)
+    .first();
+  if (count >= SCREENSHOT_RATE_LIMIT) {
+    return json({ error: 'rate_limited' }, 429);
+  }
+
+  const declared = parseInt(request.headers.get('Content-Length') ?? '0', 10);
+  if (!Number.isFinite(declared) || declared <= 0) {
+    return json({ error: 'missing_content_length' }, 411);
+  }
+  if (declared > SCREENSHOT_MAX_BYTES) {
+    return json({ error: 'payload_too_large' }, 413);
+  }
+
+  const bytes = await request.arrayBuffer();
+  if (bytes.byteLength === 0) {
+    return json({ error: 'empty_body' }, 400);
+  }
+  if (bytes.byteLength > SCREENSHOT_MAX_BYTES) {
+    return json({ error: 'payload_too_large' }, 413);
+  }
+
+  const key = `${crypto.randomUUID()}.${ext}`;
+  await env.SCREENSHOTS.put(key, bytes, {
+    httpMetadata: { contentType },
+  });
+
+  // Record AFTER a successful R2 write (count only real uploads).
+  await env.DB
+    .prepare(
+      `INSERT INTO screenshot_uploads (device_token, object_key, created_at)
+       VALUES (?, ?, ?)`,
+    )
+    .bind(deviceToken, key, new Date().toISOString())
+    .run();
+
+  const base = new URL(request.url);
+  return json(
+    { screenshot_url: `${base.protocol}//${base.host}/screenshots/${key}` },
+    201,
+  );
+}
+
+/**
+ * Serve an uploaded screenshot. Keys are UUIDs — unguessable capability
+ * URLs. Immutable cache headers: object keys are never rewritten.
+ */
+async function handleScreenshotServe(request, env, key) {
+  const object = await env.SCREENSHOTS.get(key);
+  if (!object) {
+    return json({ error: 'not_found' }, 404);
+  }
+  const headers = new Headers();
+  object.writeHttpMetadata(headers);
+  headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+  headers.set('Cross-Origin-Resource-Policy', 'cross-origin');
+  return new Response(object.body, { headers });
+}
+
+/**
+ * A device's own change requests — the in-app status screen. The device
+ * token is the capability (the app mints it client-side; it is never
+ * shown to other users). Read-only and returns only the caller's own rows,
+ * so no per-token limit here — the WAF per-IP rule bounds burst traffic.
+ */
+async function handleByToken(request, env, url) {
+  const deviceToken = cleanString(
+    url.searchParams.get('device_token') ?? '',
+    CAPS.device_token,
+  );
+  if (!deviceToken) {
+    return json({ error: 'missing_device_token' }, 400);
+  }
+
+  const limit = Math.min(
+    parseInt(url.searchParams.get('limit') ?? '100', 10),
+    500,
+  );
+  const { results } = await env.DB
+    .prepare(
+      `SELECT id, type, title, status, screenshot_url,
+              github_issue_number, github_issue_url, created_at, triaged_at
+       FROM change_requests
+       WHERE device_token = ?
+       ORDER BY created_at DESC LIMIT ?`,
+    )
+    .bind(deviceToken, limit)
+    .all();
+
+  return json({ change_requests: results }, 200);
+}
+
 async function handlePatch(request, env, id) {
   const authError = requireAuth(request, env);
   if (authError) return authError;
-
   let body;
   try {
     body = await request.json();
