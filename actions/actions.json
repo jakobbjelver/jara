@@ -1,0 +1,149 @@
+{
+  "$schema": "./schema.json",
+  "source": "jara",
+  "container": "code-server",
+  "workdir": "/home/coder/project/jara",
+  "host_workdir": "/Users/jakob/Repos/jara",
+  "actions": [
+    {
+      "id": "sim-launch",
+      "name": "Launch on Simulator",
+      "description": "Boots the iPhone 17 Pro simulator (idempotent), builds the debug app, installs and launches it, then captures a screenshot.",
+      "icon": "Play",
+      "color": "slate",
+      "confirmMessage": "Build and launch JARA on the iPhone 17 Pro simulator? Takes ~1-3 minutes (flutter build included).",
+      "commands": [
+        {
+          "description": "Boot simulator (idempotent)",
+          "command": "xcrun simctl boot 094D4A15-891A-4E86-9C8F-1AC2CAB460B3 2>/dev/null || true; echo 'Simulator booted (or was already running)'",
+          "run_on": "host"
+        },
+        {
+          "description": "Wait until fully booted",
+          "command": "xcrun simctl bootstatus 094D4A15-891A-4E86-9C8F-1AC2CAB460B3 -b 2>&1 | tail -2",
+          "run_on": "host"
+        },
+        {
+          "description": "Build debug app for simulator",
+          "command": "flutter build ios --simulator --debug 2>&1 | tail -5",
+          "run_on": "host"
+        },
+        {
+          "description": "Install on simulator",
+          "command": "xcrun simctl install 094D4A15-891A-4E86-9C8F-1AC2CAB460B3 build/ios/iphonesimulator/Runner.app && echo 'INSTALLED com.jara.jara'",
+          "run_on": "host"
+        },
+        {
+          "description": "Launch the app",
+          "command": "xcrun simctl launch 094D4A15-891A-4E86-9C8F-1AC2CAB460B3 com.jara.jara && echo 'LAUNCHED'",
+          "run_on": "host"
+        },
+        {
+          "description": "Capture evidence screenshot",
+          "command": "mkdir -p smoketest/output && xcrun simctl io 094D4A15-891A-4E86-9C8F-1AC2CAB460B3 screenshot smoketest/output/sim-launch.png >/dev/null && echo 'Screenshot: /Users/jakob/Repos/jara/smoketest/output/sim-launch.png'",
+          "run_on": "host"
+        }
+      ]
+    },
+    {
+      "id": "sim-quit",
+      "name": "Shutdown Simulator",
+      "description": "Terminates the JARA app and shuts down the iPhone 17 Pro simulator.",
+      "icon": "Hammer",
+      "color": "slate",
+      "confirmMessage": "Shut down the simulator? Any unsaved simulator state is lost.",
+      "commands": [
+        {
+          "description": "Terminate the app",
+          "command": "xcrun simctl terminate 094D4A15-891A-4E86-9C8F-1AC2CAB460B3 com.jara.jara 2>/dev/null && echo 'App terminated' || echo 'App was not running'",
+          "run_on": "host"
+        },
+        {
+          "description": "Shutdown the simulator",
+          "command": "xcrun simctl shutdown 094D4A15-891A-4E86-9C8F-1AC2CAB460B3 2>/dev/null && echo 'Simulator shut down' || echo 'Simulator was not booted'",
+          "run_on": "host"
+        }
+      ]
+    },
+    {
+      "id": "sim-rebuild",
+      "name": "Rebuild & Relaunch",
+      "description": "Rebuilds the debug app, reinstalls and relaunches on the already-booted simulator — for after code edits. No boot step.",
+      "icon": "Hammer",
+      "color": "slate",
+      "confirmMessage": "Rebuild and relaunch JARA on the simulator? Requires the simulator to already be booted.",
+      "commands": [
+        {
+          "description": "Build debug app for simulator",
+          "command": "flutter build ios --simulator --debug 2>&1 | tail -5",
+          "run_on": "host"
+        },
+        {
+          "description": "Reinstall on simulator",
+          "command": "xcrun simctl install 094D4A15-891A-4E86-9C8F-1AC2CAB460B3 build/ios/iphonesimulator/Runner.app && echo 'INSTALLED com.jara.jara'",
+          "run_on": "host"
+        },
+        {
+          "description": "Relaunch the app",
+          "command": "xcrun simctl terminate 094D4A15-891A-4E86-9C8F-1AC2CAB460B3 com.jara.jara 2>/dev/null || true; xcrun simctl launch 094D4A15-891A-4E86-9C8F-1AC2CAB460B3 com.jara.jara && echo 'LAUNCHED'",
+          "run_on": "host"
+        },
+        {
+          "description": "Capture evidence screenshot",
+          "command": "mkdir -p smoketest/output && xcrun simctl io 094D4A15-891A-4E86-9C8F-1AC2CAB460B3 screenshot smoketest/output/sim-rebuild.png >/dev/null 2>&1 && echo 'Screenshot: /Users/jakob/Repos/jara/smoketest/output/sim-rebuild.png' || echo 'Screenshot skipped (simulator not booted)'",
+          "run_on": "host"
+        }
+      ]
+    },
+    {
+      "id": "sim-screenshot",
+      "name": "Screenshot Now",
+      "description": "Captures the current simulator screen to smoketest/output/ with a timestamped filename.",
+      "icon": "Play",
+      "color": "slate",
+      "confirmMessage": "Capture a screenshot of the booted simulator now?",
+      "commands": [
+        {
+          "description": "Capture timestamped screenshot",
+          "command": "TS=$(date +%s); mkdir -p smoketest/output; xcrun simctl io booted screenshot \"smoketest/output/sim-${TS}.png\" 2>/dev/null && echo \"Screenshot: /Users/jakob/Repos/jara/smoketest/output/sim-${TS}.png\" || { echo 'ERROR: no booted simulator — run Launch on Simulator first'; exit 1; }",
+          "run_on": "host"
+        }
+      ]
+    },
+    {
+      "id": "smoke-gate",
+      "name": "Run Smoketest Gate",
+      "description": "Runs the full 4-flow Maestro smoketest gate (tool/smoketest.sh) — the dev→main PR gate. Boots the sim, builds, installs, plays GPS waypoints, runs all flows.",
+      "icon": "Rocket",
+      "color": "slate",
+      "confirmMessage": "Run the full smoketest gate? Takes ~2-4 minutes and will reboot the simulator.",
+      "commands": [
+        {
+          "description": "Run smoketest gate (tool/smoketest.sh)",
+          "command": "bash tool/smoketest.sh",
+          "run_on": "host"
+        }
+      ]
+    },
+    {
+      "id": "sim-status",
+      "name": "Simulator Status",
+      "description": "Shows which simulators are booted and whether the JARA app process is running.",
+      "icon": "Play",
+      "color": "slate",
+      "confirmMessage": "Check simulator status?",
+      "commands": [
+        {
+          "description": "List booted simulators",
+          "command": "xcrun simctl list devices | grep Booted || echo 'No booted simulators'",
+          "run_on": "host"
+        },
+        {
+          "description": "Check for running app process",
+          "command": "PIDS=$(pgrep -f '[R]unner.app' || true); if [ -n \"$PIDS\" ]; then echo \"JARA app running (simulator process PIDs: $PIDS)\"; else echo 'JARA app not running on any booted simulator'; fi",
+          "run_on": "host"
+        }
+      ]
+    }
+  ]
+}
