@@ -108,7 +108,7 @@ class ChangeRequestSection extends ConsumerWidget {
             // Capture the messenger BEFORE the await — contexts must not
             // cross async gaps.
             final messenger = ScaffoldMessenger.of(ctx);
-            final result = await FilePicker.platform.pickFiles(
+            final result = await FilePicker.pickFiles(
               type: FileType.image,
               withData: true,
             );
