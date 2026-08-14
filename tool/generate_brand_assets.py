@@ -48,7 +48,8 @@ def _rotated_points(deg: float):
     out = []
     for x, y in ROUTE_POINTS:
         dx, dy = x - 0.5, y - 0.5
-        out.append((0.5 + dx * c + dy * s, 0.5 - dx * s + dy * c))
+        # Screen coordinates (y down): this is CLOCKWISE as seen on screen.
+        out.append((0.5 + dx * c - dy * s, 0.5 + dx * s + dy * c))
     return out
 
 
