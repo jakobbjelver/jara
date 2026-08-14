@@ -27,50 +27,60 @@ OUT = ROOT / "brand" / "generated"
 INK = (26, 26, 28)            # #1A1A1C
 SURFACE_INVERSE = (38, 38, 43)  # #26262B
 MARK_ON_INVERSE = (232, 232, 234)  # #E8E8EA
-ACCENT = (78, 127, 224)       # #4E7FE0 JARA Blue
 
 # ── Mark geometry (relative to canvas size 1.0, BRAND.md §2) ────────────
-STROKE = 0.13
-STEM_TOP = (0.64, 0.18)
-STEM_BOTTOM = (0.64, 0.68)          # hook arc starts exactly here
-HOOK_CENTER = (0.44, 0.68)
-HOOK_RADIUS = 0.20
-HOOK_START_DEG = 0.0                # 3 o'clock (stem bottom), clockwise
-HOOK_END_DEG = 180.0                # 9 o'clock — half circle sweeping under
-DOT_CENTER = (0.46, 0.44)           # the runner (reads as lowercase-j dot)
-DOT_RADIUS = 0.075
+# The Route mark: an angular folded path (map-route switchbacks), tilted
+# 20° clockwise so it reads as legs mid-stride. Flat reading: the letters
+# J + A fused — the back of the J flows into the long line of the A.
+STROKE = 0.11
+ROUTE_POINTS = [
+    (0.24, 0.62), (0.46, 0.62), (0.46, 0.38), (0.68, 0.38), (0.68, 0.66),
+]
+TILT_DEG = 20                 # clockwise rotation of the whole path
+FIT_MARGIN = 0.16             # mark fills 0.16..0.84 of the canvas
 
 
-def draw_mark(draw: ImageDraw.ImageDraw, size: int, color, accent: bool = False) -> None:
-    """Draw the stride mark centered on a square canvas of `size` px.
+def _rotated_points(deg: float):
+    import math
+
+    rad = math.radians(deg)
+    c, s = math.cos(rad), math.sin(rad)
+    out = []
+    for x, y in ROUTE_POINTS:
+        dx, dy = x - 0.5, y - 0.5
+        out.append((0.5 + dx * c + dy * s, 0.5 - dx * s + dy * c))
+    return out
+
+
+def draw_mark(draw: ImageDraw.ImageDraw, size: int, color) -> None:
+    """Draw the Route mark centered on a square canvas of `size` px.
 
     All geometry is relative to `size`; render at a supersampled size and
-    downscale for smooth edges."""
+    downscale for smooth edges. Grayscale only."""
     s = size
     stroke = max(2, int(round(s * STROKE)))
-    fill = ACCENT if accent else color
 
-    # Stem — the stride, planted and solid.
+    pts = _rotated_points(TILT_DEG)
+
+    # Normalize: fit the (unstroked) path into the FIT_MARGIN box, centered.
+    xs = [p[0] for p in pts]
+    ys = [p[1] for p in pts]
+    w, h = max(xs) - min(xs), max(ys) - min(ys)
+    scale = min((1 - 2 * FIT_MARGIN) / w, (1 - 2 * FIT_MARGIN) / h)
+    cx = (max(xs) + min(xs)) / 2
+    cy = (max(ys) + min(ys)) / 2
+    fit = [(0.5 + (x - cx) * scale, 0.5 + (y - cy) * scale) for x, y in pts]
+
     draw.line(
-        (STEM_TOP[0] * s, STEM_TOP[1] * s, STEM_BOTTOM[0] * s, STEM_BOTTOM[1] * s),
-        fill=fill,
+        [(x * s, y * s) for x, y in fit],
+        fill=color,
         width=stroke,
+        joint="curve",
     )
-
-    # Hook — the track's 180° turn, sweeping under the stem.
-    cx, cy = HOOK_CENTER[0] * s, HOOK_CENTER[1] * s
-    r = HOOK_RADIUS * s
-    bbox = (cx - r, cy - r, cx + r, cy + r)
-    draw.arc(bbox, start=HOOK_START_DEG, end=HOOK_END_DEG, fill=fill, width=stroke)
-
-    # Runner dot — motion on the path.
-    dx, dy = DOT_CENTER[0] * s, DOT_CENTER[1] * s
-    dr = DOT_RADIUS * s
-    draw.ellipse((dx - dr, dy - dr, dx + dr, dy + dr), fill=fill)
 
 
 def render_mark(size: int, background=None, color=MARK_ON_INVERSE,
-                accent: bool = False, supersample: int = 4) -> Image.Image:
+                supersample: int = 4) -> Image.Image:
     """Render the mark at `size` px with optional background, supersampled."""
     big = size * supersample
     if background is None:
@@ -78,7 +88,7 @@ def render_mark(size: int, background=None, color=MARK_ON_INVERSE,
     else:
         img = Image.new("RGBA", (big, big), (*background, 255))
     draw = ImageDraw.Draw(img)
-    draw_mark(draw, big, color, accent=accent)
+    draw_mark(draw, big, color)
     return img.resize((size, size), Image.LANCZOS)
 
 
@@ -98,10 +108,10 @@ IOS_ICONS = [
 ANDROID_MIPMAPS = [("mdpi", 48), ("hdpi", 72), ("xhdpi", 96),
                    ("xxhdpi", 144), ("xxxhdpi", 192)]
 
-# ── iOS splash (centered mark on neutral background) ────────────────────
-IOS_SPLASHES = [("LaunchImage.png", (375, 667)),
-                ("LaunchImage@2x.png", (750, 1334)),
-                ("LaunchImage@3x.png", (1242, 2208))]
+# ── iOS splash (mark-only, transparent — storyboard supplies the dark bg) ──
+IOS_SPLASHES = [("LaunchImage.png", (168, 185)),
+                ("LaunchImage@2x.png", (336, 370)),
+                ("LaunchImage@3x.png", (504, 555))]
 
 # ── Android launch backgrounds ──────────────────────────────────────────
 ANDROID_LAUNCH = [("drawable-mdpi", (480, 800)), ("drawable-hdpi", (720, 1280)),
@@ -146,19 +156,27 @@ def generate_all() -> list[Path]:
     (ios_dir / "Contents.json").write_text(json.dumps(ios_contents_json(), indent=2))
     written.append(ios_dir / "Contents.json")
 
-    # Android mipmaps
+    # Android mipmaps + launch image (mark on transparent, centered)
+    launch_sizes = {"mdpi": 288, "hdpi": 432, "xhdpi": 576,
+                    "xxhdpi": 864, "xxxhdpi": 1152}
     for density, size in ANDROID_MIPMAPS:
         d = OUT / "android" / f"mipmap-{density}"
         d.mkdir(parents=True, exist_ok=True)
         p = d / "ic_launcher.png"
         render_mark(size, background=SURFACE_INVERSE).save(p)
         written.append(p)
+        lp = d / "launch_image.png"
+        render_mark(launch_sizes[density], background=None,
+                    color=MARK_ON_INVERSE).save(lp)
+        written.append(lp)
 
-    # iOS splash
+    # iOS splash — mark only on transparent; the storyboard paints the
+    # #26262B background.
     for filename, (w, h) in IOS_SPLASHES:
         p = OUT / "ios" / filename
         p.parent.mkdir(parents=True, exist_ok=True)
-        render_splash(w, h).save(p)
+        render_mark(min(w, h), background=None,
+                    color=MARK_ON_INVERSE).save(p)
         written.append(p)
 
     # Android launch backgrounds + 12-style icon (reuse mipmap)
@@ -201,8 +219,6 @@ def main() -> None:
             ROOT / "brand" / "preview-mark-dark.png")
         render_mark(512, background=(255, 255, 255), color=INK).save(
             ROOT / "brand" / "preview-mark-light.png")
-        render_mark(512, background=SURFACE_INVERSE, accent=True).save(
-            ROOT / "brand" / "preview-mark-accent.png")
         print("previews written to brand/preview-mark-*.png")
         return
 
