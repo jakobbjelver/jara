@@ -426,7 +426,7 @@ dart run build_runner build --delete-conflicting-outputs
 | `GOAL.md` | Project philosophy, feature matrix, what JARA is/isn't |
 | `smoketest/flows/` | Maestro simulator flows — the dev→main gate |
 | `tool/smoketest.sh` | Runs the smoketest suite on maintainer hardware |
-| `PLAN.md` (in `.hermes/plans/`) | Current implementation plan |
+| `PLAN-00X-*.md` (in `.hermes/plans/`) | Implementation plans, one per GOAL.md §11 phase |
 | `lib/core/utils/feature_flags.dart` | V1.5 feature gates |
 | `lib/data/database/app_database.dart` | Drift database definition |
 | `lib/domain/repositories/run_repository.dart` | Abstract repository interface |
@@ -436,7 +436,7 @@ dart run build_runner build --delete-conflicting-outputs
 
 ## 13. Getting Help
 
-- **Architecture questions**: Read `PLAN.md` in `.hermes/plans/`
+- **Architecture questions**: Read the phase plan in `.hermes/plans/` (e.g. `PLAN-004-v15-kickoff.md`)
 - **Flutter APIs**: https://api.flutter.dev
 - **Drift documentation**: https://drift.simonbinder.eu/docs/
 - **Riverpod documentation**: https://riverpod.dev
