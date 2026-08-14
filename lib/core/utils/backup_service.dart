@@ -29,7 +29,7 @@ class BackupService {
       ..add(encrypted.bytes);
     final backupBytes = output.toBytes();
 
-    final result = await FilePicker.platform.saveFile(
+    final result = await FilePicker.saveFile(
       fileName:
           'jara_backup_${DateTime.now().millisecondsSinceEpoch}.jarabackup',
     );
@@ -43,7 +43,7 @@ class BackupService {
 
   /// Restores the database from an encrypted backup file.
   Future<bool> restoreBackup(String password) async {
-    final result = await FilePicker.platform.pickFiles(
+    final result = await FilePicker.pickFiles(
       allowMultiple: false,
       type: FileType.any,
     );
