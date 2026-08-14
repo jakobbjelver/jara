@@ -9,6 +9,10 @@ on:
 jobs:
   build:
     runs-on: macos-15
+    env:
+      # device_info_plus 12.4.0 calls isiOSAppOnVision (iOS 26 SDK); the
+      # runner's default Xcode 16.4 lacks it. Select the newest installed Xcode.
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
