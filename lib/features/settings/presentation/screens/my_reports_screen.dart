@@ -66,9 +66,7 @@ class _MyReportsScreenState extends ConsumerState<MyReportsScreen> {
           return RefreshIndicator(
             onRefresh: () async => _refresh(),
             child: ListView.separated(
-              padding: const EdgeInsets.symmetric(
-                vertical: AppSpacing.md,
-              ),
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
               itemCount: reports.length,
               separatorBuilder: (_, _) => const Divider(
                 indent: AppSpacing.lg,
@@ -147,8 +145,7 @@ class _ReportTile extends StatelessWidget {
       trailing: report.githubIssueUrl != null
           ? IconButton(
               icon: const Icon(Icons.open_in_new, size: 18),
-              tooltip:
-                  'Open GitHub issue #${report.githubIssueNumber ?? '?'}',
+              tooltip: 'Open GitHub issue #${report.githubIssueNumber ?? '?'}',
               onPressed: () => _openIssue(context, report.githubIssueUrl!),
             )
           : null,
@@ -188,10 +185,7 @@ class _EmptyState extends StatelessWidget {
             color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
           ),
           const SizedBox(height: AppSpacing.lg),
-          Text(
-            'No reports yet',
-            style: theme.textTheme.titleMedium,
-          ),
+          Text('No reports yet', style: theme.textTheme.titleMedium),
           const SizedBox(height: AppSpacing.xs),
           Text(
             'Reports you submit from this device\nshow their status here.',

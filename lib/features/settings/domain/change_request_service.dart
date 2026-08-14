@@ -54,9 +54,9 @@ class ChangeRequestService {
   /// capability; no other auth.
   Future<List<ChangeRequestReport>> fetchMyReports(String deviceToken) async {
     try {
-      final uri = Uri.parse(AppEndpoints.changeRequestsByToken).replace(
-        queryParameters: {'device_token': deviceToken},
-      );
+      final uri = Uri.parse(
+        AppEndpoints.changeRequestsByToken,
+      ).replace(queryParameters: {'device_token': deviceToken});
       final response = await http.get(uri);
 
       if (response.statusCode != 200) {

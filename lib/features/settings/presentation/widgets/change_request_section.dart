@@ -62,9 +62,7 @@ class ChangeRequestSection extends ConsumerWidget {
           const SizedBox(height: AppSpacing.sm),
           OutlinedButton.icon(
             onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => const MyReportsScreen(),
-              ),
+              MaterialPageRoute<void>(builder: (_) => const MyReportsScreen()),
             ),
             icon: const Icon(Icons.rate_review_outlined, size: 18),
             label: const Text('My Reports'),
@@ -313,16 +311,16 @@ class ChangeRequestSection extends ConsumerWidget {
                         onPressed: uploadingScreenshot
                             ? null
                             : () async {
-                                setSheetState(
-                                  () => uploadingScreenshot = true,
-                                );
+                                setSheetState(() => uploadingScreenshot = true);
                                 await pickScreenshot();
                                 setSheetState(
                                   () => uploadingScreenshot = false,
                                 );
                               },
-                        icon: const Icon(Icons.add_photo_alternate_outlined,
-                            size: 18),
+                        icon: const Icon(
+                          Icons.add_photo_alternate_outlined,
+                          size: 18,
+                        ),
                         label: const Text('Attach Screenshot (optional)'),
                       )
                     else ...[

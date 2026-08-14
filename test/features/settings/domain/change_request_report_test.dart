@@ -10,7 +10,8 @@ void main() {
         'type': 'bug',
         'title': 'Pace chart wrong',
         'status': 'triaged',
-        'screenshot_url': 'https://api.jara.messerstudios.dev/screenshots/x.png',
+        'screenshot_url':
+            'https://api.jara.messerstudios.dev/screenshots/x.png',
         'github_issue_number': 7,
         'github_issue_url': 'https://github.com/jakobbjelver/jara/issues/7',
         'created_at': '2026-08-14T08:00:00.000Z',

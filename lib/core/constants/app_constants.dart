@@ -46,5 +46,6 @@ class AppEndpoints {
   static const String apiBase = 'https://api.jara.messerstudios.dev';
   static const String changeRequest = '$apiBase/change-request';
   static const String screenshotUpload = '$apiBase/screenshot-upload';
-  static const String changeRequestsByToken = '$apiBase/change-requests/by-token';
+  static const String changeRequestsByToken =
+      '$apiBase/change-requests/by-token';
 }
