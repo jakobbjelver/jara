@@ -34,7 +34,7 @@ class ExportRun {
       ExportFormat.csv => 'csv',
     };
 
-    final result = await FilePicker.platform.saveFile(
+    final result = await FilePicker.saveFile(
       fileName: 'jara_run_${run.startTime.millisecondsSinceEpoch}.$extension',
     );
 
