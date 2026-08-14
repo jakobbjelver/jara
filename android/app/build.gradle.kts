@@ -6,7 +6,8 @@ plugins {
 
 android {
     namespace = "com.jara.jara"
-    compileSdk = flutter.compileSdkVersion
+    // file_picker 8.x requires compileSdk >= 36; Flutter 3.44 defaults to 34.
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
