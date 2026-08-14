@@ -1,0 +1,16 @@
+appId: com.jara.jara
+---
+- launchApp
+- tapOn:
+    text: "History.*"
+    index: 0
+- extendedWaitUntil:
+    visible: "History.*"
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: after-history-tap
+- tapOn:
+    text: "Analytics.*"
+    index: 0
+- waitForAnimationToEnd
+- takeScreenshot: after-analytics-tap

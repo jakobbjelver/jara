@@ -43,6 +43,9 @@ class AppEndpoints {
   /// Production: custom domain on the messerstudios.dev zone
   /// (WAF skip rule active — verified working for non-browser clients).
   /// Fallback: jara-change-requests.jakobbjelver.workers.dev
-  static const String changeRequest =
-      'https://api.jara.messerstudios.dev/change-request';
+  static const String apiBase = 'https://api.jara.messerstudios.dev';
+  static const String changeRequest = '$apiBase/change-request';
+  static const String screenshotUpload = '$apiBase/screenshot-upload';
+  static const String changeRequestsByToken =
+      '$apiBase/change-requests/by-token';
 }
