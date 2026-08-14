@@ -51,3 +51,6 @@ app.*.map.json
 
 # Maintainer agent token (debug builds only) — never commit
 maintainer_token.json
+
+# Smoketest run evidence (kept locally only)
+smoketest/output/
