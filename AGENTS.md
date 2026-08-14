@@ -90,8 +90,7 @@ something a package already does.**
 
 | Package | Version | Purpose | Why Not Custom |
 |---------|---------|---------|----------------|
-| `flutter_riverpod` | ^3.4.0 | State management (Notifier API) | Industry standard for Flutter state |
-| `riverpod_annotation` | ^4.0.0 | Code generation for providers | Eliminates boilerplate |
+| `flutter_riverpod` | ^2.4.0 | State management (manual providers) | Industry standard for Flutter state |
 | `go_router` | ^14.0.0 | Navigation & routing | Official Flutter recommendation |
 | `drift` | ^2.21.0 | SQLite ORM with type-safe queries | Handles migrations, reactive queries |
 | `geolocator` | ^14.0.0 | GPS location (Baseflow) | Battle-tested, cross-platform |
@@ -232,15 +231,22 @@ Use the mapper (`RunMapper`) to convert between domain entities and drift data c
 | Reactive streams (run history, GPS positions) | `StreamProvider` |
 | Injected dependencies (database, repository) | `Provider` |
 
-### Code Generation
+### Providers
 
-Riverpod supports code generation for providers. If the codebase uses `@riverpod` annotations:
+JARA uses **manual providers** (Riverpod 2.x — no code generation). See the plan's
+risk assessment: code generation added dependency friction, so we use the manual
+API instead. Define providers as top-level `final` variables:
 
-```bash
-dart run build_runner build --delete-conflicting-outputs
+```dart
+final runHistoryProvider = StreamProvider<List<Run>>((ref) {
+  final repository = ref.watch(runRepositoryProvider);
+  return repository.watchRunHistory();
+});
 ```
 
-If code generation causes friction, fall back to manual providers — Riverpod supports both.
+Shared DI providers (`databaseProvider`, `runRepositoryProvider`,
+`gpsDataSourceProvider`, `settingsRepositoryProvider`) live in
+`lib/features/settings/presentation/providers/settings_provider.dart`.
 
 ### Reading Providers in Widgets
 
@@ -314,6 +320,31 @@ class MockRunRepository extends Mock implements RunRepository {}
 
 For drift database mocks, use `drift_dev`'s generated mocks or create an in-memory database for tests.
 
+### Smoketest (Mandatory Before a dev→main PR)
+
+Unit and widget tests are not enough. Before a `dev` → `main` PR can open, the
+app must be exercised on the iOS simulator (maintainer hardware):
+
+1. Run `./tool/smoketest.sh` — boots the simulator, builds, installs, runs the
+   Maestro flows in `smoketest/flows/`.
+2. Attach the flow log + screenshots to the PR.
+3. A missing or failed smoketest is a hard block in review.
+
+Flows cover app boot, tab navigation, a simulated-GPS run (start → save →
+detail), Change Request submit, and backup export. Flutter semantics are
+exposed to Maestro through the accessibility tree — give interactive widgets
+stable semantic labels.
+
+**Writing flows** (hard-won rules for this codebase):
+- Maestro regexes FULL-match the accessibility text — nav tabs expose as
+  `History\nTab 2 of 4`, so selectors need trailing `.*`.
+- Ambiguous text matches → `tapOn: {text: X, index: 0}`.
+- Below-the-fold targets need `scrollUntilVisible`.
+- `hideKeyboard` does not work with Flutter — scroll the form instead.
+- Flow env vars require `maestro test -e VAR=val`; shell exports don't
+  interpolate.
+- Verify selectors with `maestro hierarchy` before committing flows.
+
 ---
 
 ## 9. Code Review Checklist
@@ -329,6 +360,7 @@ Before pushing, review your own diff against these questions:
 7. **Grayscale**: Does the UI use green/color where it should be grayscale? Amber for warnings? Red for errors?
 8. **Domain purity**: Does `lib/domain/` contain any Flutter imports?
 9. **No dead code**: No commented-out blocks, no unused imports, no stale variables.
+10. **Smoketest** (dev→main PRs): did `tool/smoketest.sh` pass on the Mac mini, with evidence attached?
 
 ### Automated Review (Pre-Push)
 
@@ -392,8 +424,10 @@ dart run build_runner build --delete-conflicting-outputs
 | File | Purpose |
 |------|---------|
 | `GOAL.md` | Project philosophy, feature matrix, what JARA is/isn't |
+| `smoketest/flows/` | Maestro simulator flows — the dev→main gate |
+| `tool/smoketest.sh` | Runs the smoketest suite on maintainer hardware |
 | `PLAN.md` (in `.hermes/plans/`) | Current implementation plan |
-| `lib/core/feature_flags.dart` | V1.5 feature gates |
+| `lib/core/utils/feature_flags.dart` | V1.5 feature gates |
 | `lib/data/database/app_database.dart` | Drift database definition |
 | `lib/domain/repositories/run_repository.dart` | Abstract repository interface |
 | `lib/core/theme/app_colors.dart` | Fixed semantic color tokens |

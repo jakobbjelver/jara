@@ -1,0 +1,16 @@
+# JARA smoketest — flow 4: backup dialog (deterministic part of the export path)
+# The system file picker is non-deterministic in Maestro; the gate covers the
+# dialog + validation. Actual file export is exercised by the maintainer-human
+# route on real devices (SELF-IMPROVEMENT.md §9).
+appId: com.jara.jara
+---
+- launchApp
+- tapOn: "Settings.*"
+- scrollUntilVisible:
+    element: "Create Backup"
+    direction: DOWN
+- tapOn: "Create Backup"
+- assertVisible: "Enter a password to encrypt your backup."
+- tapOn: "Backup"
+- assertVisible: "Password required"
+- tapOn: "Cancel"

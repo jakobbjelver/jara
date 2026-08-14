@@ -1,0 +1,21 @@
+# JARA smoketest — flow 1: boot + tab navigation
+# Deterministic gate flow (SELF-IMPROVEMENT.md §7). No vision gating.
+# Note: Maestro regexes full-match; nav tabs expose as "Label\nTab N of 4".
+appId: com.jara.jara
+---
+- launchApp
+- assertVisible: "Start Run"
+- tapOn: "History.*"
+- assertVisible: "History.*"
+- tapOn: "Analytics.*"
+- assertVisible: "Analytics.*"
+- tapOn: "Settings.*"
+- assertVisible: "Settings.*"
+- scrollUntilVisible:
+    element: "Report Bug"
+    direction: DOWN
+    timeout: 20000
+- assertVisible: "Report Bug"
+- assertVisible: "Request Feature"
+- tapOn: "Run.*"
+- assertVisible: "Start Run"

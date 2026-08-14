@@ -1,0 +1,75 @@
+name: jara
+description: "JARA — Just Another Running App. Privacy-first, open-source running tracker for iOS and Android."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # State management
+  flutter_riverpod: ^2.4.0
+  # Navigation
+  go_router: ^14.0.0
+  # Database
+  drift: ^2.21.0
+  sqlite3_flutter_libs: ^0.5.0
+  path_provider: ^2.1.0
+  path: ^1.9.0
+  # GPS / Location
+  geolocator: ^14.0.0
+  flutter_background_service: ^5.0.0
+  # Maps
+  flutter_map: ^8.3.0
+  latlong2: ^0.9.0
+  # Charts
+  fl_chart: ^0.69.0
+  # File handling
+  # Pinned to 10.3.10 (not ^): 11.x skips applying the Kotlin Gradle Plugin
+  # under AGP >= 9 (relies on built-in Kotlin), but this project sets
+  # android.builtInKotlin=false → FilePickerPlugin class missing on CI.
+  # 10.3.10 applies KGP unconditionally and uses flutter.compileSdkVersion.
+  # 12.x is federated (android_file_picker etc.) — untested churn.
+  file_picker: 10.3.10
+  # Import/Export (GPX, TCX, FIT, CSV, GeoJSON)
+  activity_files: ^0.5.0
+  # Encryption (backup)
+  encrypt: ^5.0.0
+  # HTTP (Change Request)
+  http: ^1.2.0
+  # UUID generation
+  uuid: ^4.5.0
+  # Audio (cues)
+  audioplayers: ^6.1.0
+  # Shared preferences (settings)
+  shared_preferences: ^2.3.0
+  # Intl for date/number formatting
+  intl: ^0.19.0
+  # Structured logging (Change Request diagnostic logs)
+  logging: ^1.2.0
+  # Material Design icons
+  cupertino_icons: ^1.0.8
+  url_launcher: ^6.3.2
+  device_info_plus: ^12.4.0
+  package_info_plus: ^9.0.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  # Code generation
+  build_runner: ^2.4.0
+  drift_dev: ^2.21.0
+  # Testing
+  mocktail: ^1.0.0
+  # Linting
+  flutter_lints: ^6.0.0
+  # Integration testing
+  integration_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/sounds/

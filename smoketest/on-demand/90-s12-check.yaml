@@ -1,0 +1,45 @@
+appId: com.jara.jara
+---
+- tapOn:
+    text: "Settings.*"
+    index: 0
+- assertVisible:
+    text: "Settings.*"
+- scrollUntilVisible:
+    element:
+      text: "My Reports"
+    direction: DOWN
+    timeout: 30000
+- assertVisible:
+    text: "My Reports"
+- tapOn:
+    text: "My Reports"
+- assertVisible:
+    text: "My Reports"
+- extendedWaitUntil:
+    visible: "Smoketest bug report 1786707923.*"
+    timeout: 15000
+- assertVisible:
+    text: "Smoketest bug report 1786707923.*Pending.*"
+- assertVisible:
+    text: "Smoketest bug report undefined.*Not planned.*"
+- takeScreenshot: my-reports-live
+- tapOn:
+    text: "Back"
+- scrollUntilVisible:
+    element:
+      text: "Report Bug"
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    text: "Report Bug"
+- assertVisible:
+    text: "Report a Bug"
+- scrollUntilVisible:
+    element:
+      text: "Attach Screenshot (optional)"
+    direction: DOWN
+    timeout: 30000
+- assertVisible:
+    text: "Attach Screenshot (optional)"
+- takeScreenshot: cr-form-screenshot-button

@@ -1,0 +1,18 @@
+# JARA smoketest — flow 2: simulated-GPS run (start → stop → save → detail)
+# Requires the waypoint playback started by tool/smoketest.sh.
+appId: com.jara.jara
+---
+- launchApp
+- tapOn:
+    text: "Start Run"
+    index: 0
+- assertVisible: "Pause"
+- extendedWaitUntil:
+    visible: "Stop"
+    timeout: 15000
+- tapOn: "Stop"
+- scrollUntilVisible:
+    element: "Delete Run"
+    direction: DOWN
+    timeout: 20000
+- assertVisible: "Delete Run"
