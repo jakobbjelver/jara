@@ -43,8 +43,11 @@ JARA has **no events, no guided runs, no challenges, no leaderboards, no prizes,
 rewards**. Run because you want to run, not because an app told you to.
 
 JARA has **no account creation**. There is no login screen. There is no user database.
-The app works fully offline and never phones home except for two things: (1) checking for
-updates, and (2) submitting Change Requests (which are anonymous by design).
+The app works fully offline and never phones home except for three things: (1) checking for
+updates, (2) submitting Change Requests (which are anonymous by design), optionally with
+screenshots you explicitly attach, and (3) checking the status of the Change Requests you
+have submitted from this device. Nothing else is ever transmitted — no run data, no
+analytics, no identifiers beyond the anonymous device token used for those requests.
 
 JARA does **not gamify your fitness**. No XP, no levels, no badges, no streaks.
 Personal records are statistics, not achievements to unlock.

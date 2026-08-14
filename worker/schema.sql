@@ -36,3 +36,15 @@ CREATE INDEX IF NOT EXISTS idx_change_requests_device_token
 
 CREATE INDEX IF NOT EXISTS idx_change_requests_status
   ON change_requests (status);
+
+-- Screenshot upload log (ADR-009) — used for per-token upload rate limiting
+-- and as an audit trail. Rows are inserted before the R2 write.
+CREATE TABLE IF NOT EXISTS screenshot_uploads (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  device_token TEXT NOT NULL,
+  object_key TEXT NOT NULL,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_screenshot_uploads_token
+  ON screenshot_uploads (device_token, created_at);

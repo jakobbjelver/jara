@@ -11,3 +11,7 @@ database_id = "c2de4475-93f4-4b75-8bcd-37376db72865"
 
 # Shared secret for the Hermes triage cron read API.
 # Set via: wrangler secret put TRIAGE_SECRET
+
+[[r2_buckets]]
+binding = "SCREENSHOTS"
+bucket_name = "jara-screenshots"
