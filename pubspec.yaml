@@ -27,10 +27,12 @@ dependencies:
   # Charts
   fl_chart: ^0.69.0
   # File handling
-  # 11.x uses flutter.compileSdkVersion in its Android build (8.x hardcodes
-  # compileSdk 34 → AAR metadata conflict with flutter_plugin_android_lifecycle
-  # requiring 36 on the CI Android build). 10.x is retracted on pub.dev.
-  file_picker: ^11.0.3
+  # Pinned to 10.3.10 (not ^): 11.x skips applying the Kotlin Gradle Plugin
+  # under AGP >= 9 (relies on built-in Kotlin), but this project sets
+  # android.builtInKotlin=false → FilePickerPlugin class missing on CI.
+  # 10.3.10 applies KGP unconditionally and uses flutter.compileSdkVersion.
+  # 12.x is federated (android_file_picker etc.) — untested churn.
+  file_picker: 10.3.10
   # Import/Export (GPX, TCX, FIT, CSV, GeoJSON)
   activity_files: ^0.5.0
   # Encryption (backup)

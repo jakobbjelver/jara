@@ -16,7 +16,7 @@ class ImportRun {
 
   /// Imports a file and returns the created [Run]s.
   Future<List<Run>> call() async {
-    final result = await FilePicker.pickFiles(
+    final result = await FilePicker.platform.pickFiles(
       allowMultiple: false,
       type: FileType.any,
     );
