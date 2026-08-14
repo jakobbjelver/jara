@@ -335,6 +335,16 @@ detail), Change Request submit, and backup export. Flutter semantics are
 exposed to Maestro through the accessibility tree — give interactive widgets
 stable semantic labels.
 
+**Writing flows** (hard-won rules for this codebase):
+- Maestro regexes FULL-match the accessibility text — nav tabs expose as
+  `History\nTab 2 of 4`, so selectors need trailing `.*`.
+- Ambiguous text matches → `tapOn: {text: X, index: 0}`.
+- Below-the-fold targets need `scrollUntilVisible`.
+- `hideKeyboard` does not work with Flutter — scroll the form instead.
+- Flow env vars require `maestro test -e VAR=val`; shell exports don't
+  interpolate.
+- Verify selectors with `maestro hierarchy` before committing flows.
+
 ---
 
 ## 9. Code Review Checklist
