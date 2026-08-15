@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.jara.coredevice-tailnet</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/python3</string>
+        <string>/Users/jakob/Repos/jara/tool/coredevice_bridge.py</string>
+        <string>--mode</string>
+        <string>host</string>
+        <string>--conf</string>
+        <string>/Users/jakob/Repos/jara/tool/coredevice-bridge.conf</string>
+    </array>
+    <key>RunAtLoad</key>
+    <false/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+    <key>NumberOfFiles</key>
+    <integer>4096</integer>
+    <key>StandardOutPath</key>
+    <string>/tmp/coredevice-bridge.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/coredevice-bridge.log</string>
+</dict>
+</plist>
