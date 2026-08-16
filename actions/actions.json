@@ -1,6 +1,8 @@
 {
   "$schema": "./schema.json",
   "source": "jara",
+  "sourceName": "JARA",
+  "sourceDescription": "The running app — iOS simulator and device workflows",
   "container": "code-server",
   "workdir": "/home/coder/project/jara",
   "host_workdir": "/Users/jakob/Repos/jara",
@@ -8,7 +10,8 @@
     {
       "id": "simulator",
       "name": "Simulator",
-      "description": "iPhone 17 Pro simulator — boot, build, install and launch JARA (Start) / terminate and shut down (Stop).",
+      "description": "Boot, build, install & launch JARA on the iPhone 17 Pro simulator.",
+      "info": "Start: boot + flutter build + install + launch. Stop: terminate app + shutdown. ~1-3 min (flutter build included).",
       "icon": "Play",
       "color": "slate",
       "lifecycle": "service",
@@ -67,7 +70,8 @@
     {
       "id": "sim-rebuild",
       "name": "Rebuild & Relaunch",
-      "description": "Rebuilds the debug app, reinstalls and relaunches on the already-booted simulator — for after code edits. No boot step.",
+      "description": "Rebuild + reinstall + relaunch on the booted simulator.",
+      "info": "For after code edits. No boot step — requires the simulator to already be booted.",
       "icon": "Hammer",
       "color": "slate",
       "confirmMessage": "Rebuild and relaunch JARA on the simulator? Requires the simulator to already be booted.",
@@ -97,7 +101,8 @@
     {
       "id": "sim-screenshot",
       "name": "Screenshot Now",
-      "description": "Captures the current simulator screen to smoketest/output/ with a timestamped filename.",
+      "description": "Captures the simulator screen with a timestamped filename.",
+      "info": "Saved to smoketest/output/. Requires a booted simulator.",
       "icon": "Play",
       "color": "slate",
       "confirmMessage": "Capture a screenshot of the booted simulator now?",
@@ -112,7 +117,9 @@
     {
       "id": "smoke-gate",
       "name": "Run Smoketest Gate",
-      "description": "Runs the full 4-flow Maestro smoketest gate (tool/smoketest.sh) — the dev→main PR gate. Boots the sim, builds, installs, plays GPS waypoints, runs all flows.",
+      "description": "Full Maestro smoketest gate (dev→main PR gate).",
+      "info": "4 flows via tool/smoketest.sh: boots the sim, builds, installs, plays GPS waypoints, runs all flows. ~2-4 min.",
+      "note": "Reboots the simulator.",
       "icon": "Rocket",
       "color": "slate",
       "confirmMessage": "Run the full smoketest gate? Takes ~2-4 minutes and will reboot the simulator.",
@@ -127,7 +134,9 @@
     {
       "id": "iphone-bridge",
       "name": "iPhone Bridge",
-      "description": "CoreDevice tailnet bridge (LaunchAgent) — Bonjour spoof + TCP/UDP relay so Xcode/flutter reach the iPhone over Tailscale from anywhere. Armed 2026-08-16 (TXT captured). Use only when the phone is NOT on the home Wi-Fi — the spoof conflicts with the phone's real Bonjour announcement on the same LAN.",
+      "description": "Tailscale bridge so Xcode/flutter reach the iPhone anywhere.",
+      "info": "CoreDevice tailnet bridge (LaunchAgent): Bonjour spoof + TCP/UDP relay over Tailscale. Armed 2026-08-16 (TXT captured).",
+      "note": "Use only when the phone is NOT on home Wi-Fi — the spoof conflicts with the phone's real Bonjour announcement on the same LAN.",
       "icon": "Rocket",
       "color": "slate",
       "lifecycle": "service",
@@ -161,7 +170,9 @@
     {
       "id": "iphone-dev",
       "name": "iPhone Dev Session",
-      "description": "Builds+signs (GUI-context helper — SSH cannot sign on this Mac), installs, launches and attaches to the iPhone for hot reload. Works over USB, home Wi-Fi, or the Tailscale bridge. ⚠️ Requires an ACTIVE GUI session on the Mac mini — the launchctl GUI domain hangs when the console is inactive (away from home, the build step can stall for hours).",
+      "description": "Build+sign, install & launch JARA on the iPhone with hot reload.",
+      "info": "GUI-context helper signs the build (SSH cannot sign on this Mac). Works over USB, home Wi-Fi, or the Tailscale bridge.",
+      "note": "Requires an ACTIVE GUI session on the Mac mini — the launchctl GUI domain hangs when the console is inactive (away from home, the build can stall for hours).",
       "icon": "Rocket",
       "color": "slate",
       "lifecycle": "service",
@@ -200,7 +211,8 @@
     {
       "id": "hot-reload",
       "name": "Hot Reload",
-      "description": "Sends 'r' to the running iPhone dev session's stdin (FIFO) — hot reloads the Dart code on the device in ~1s.",
+      "description": "Hot-reload Dart code on the running iPhone dev session.",
+      "info": "Sends 'r' to the dev session's FIFO stdin — reloads on the device in ~1s.",
       "icon": "Play",
       "color": "slate",
       "confirmMessage": "Hot reload the running iPhone dev session?",

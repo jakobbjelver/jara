@@ -16,6 +16,14 @@
       "type": "string",
       "description": "Short summary of what the action does"
     },
+    "info": {
+      "type": "string",
+      "description": "Optional long-form details shown in the card's info tooltip"
+    },
+    "note": {
+      "type": "string",
+      "description": "Optional callout rendered as a note banner in the card's info tooltip"
+    },
     "icon": {
       "type": "string",
       "description": "Lucide icon name"
