@@ -127,11 +127,11 @@
     {
       "id": "iphone-bridge",
       "name": "iPhone Bridge",
-      "description": "CoreDevice tailnet bridge (LaunchAgent) — fake Bonjour + TCP/UDP relay so Xcode/flutter can reach the iPhone over Tailscale from anywhere.",
+      "description": "CoreDevice tailnet bridge (LaunchAgent) — Bonjour spoof + TCP/UDP relay so Xcode/flutter reach the iPhone over Tailscale from anywhere. Armed 2026-08-16 (TXT captured). Use only when the phone is NOT on the home Wi-Fi — the spoof conflicts with the phone's real Bonjour announcement on the same LAN.",
       "icon": "Rocket",
       "color": "slate",
       "lifecycle": "service",
-      "confirmMessage": "Start the iPhone Tailscale bridge? Requires the one-time USB setup (pairing + Bonjour TXT capture) to be done — the bridge is inert without it.",
+      "confirmMessage": "Start the iPhone Tailscale bridge? Use only when the phone is NOT on the home Wi-Fi (spoof conflicts with the phone's real Bonjour on the same LAN).",
       "stopConfirmMessage": "Stop the iPhone Tailscale bridge?",
       "status_command": {
         "description": "Check LaunchAgent + bridge process",
@@ -154,6 +154,60 @@
         {
           "description": "Boot out the LaunchAgent and wait for full teardown",
           "command": "launchctl bootout gui/$(id -u)/com.jara.coredevice-tailnet 2>/dev/null; for i in $(seq 1 15); do pgrep -f '[c]oredevice_bridge.py --mode host' >/dev/null || break; sleep 1; done; pgrep -f '[c]oredevice_bridge.py --mode host' >/dev/null && echo 'WARNING: process still alive' || echo 'bridge stopped'",
+          "run_on": "host"
+        }
+      ]
+    },
+    {
+      "id": "iphone-dev",
+      "name": "iPhone Dev Session",
+      "description": "Builds+signs (GUI-context helper — SSH cannot sign on this Mac), installs, launches and attaches to the iPhone for hot reload. Works over USB, home Wi-Fi, or the Tailscale bridge.",
+      "icon": "Rocket",
+      "color": "slate",
+      "lifecycle": "service",
+      "confirmMessage": "Start an iPhone dev session? Builds (~1 min) and launches JARA on Jakob's iPhone with hot reload.",
+      "stopConfirmMessage": "Stop the iPhone dev session? (Detaches the debugger; the app keeps running.)",
+      "status_command": {
+        "description": "Check dev session process",
+        "command": "[ -f /tmp/jara-dev.pid ] && kill -0 $(cat /tmp/jara-dev.pid) 2>/dev/null",
+        "run_on": "host"
+      },
+      "commands": [
+        {
+          "description": "Build and sign via GUI-context helper (LaunchAgent)",
+          "command": "rm -f /tmp/jara-build-helper.log; launchctl bootstrap gui/$(id -u) /Users/jakob/Repos/jara/tool/com.jara.build-ios-helper.plist 2>/dev/null || launchctl kickstart -k gui/$(id -u)/com.jara.build-ios-helper 2>/dev/null || { echo 'helper launch failed'; exit 1; }; for i in $(seq 1 60); do grep -q HELPER_DONE /tmp/jara-build-helper.log 2>/dev/null && break; sleep 5; done; grep -q 'HELPER_DONE rc=0' /tmp/jara-build-helper.log && echo 'BUILD+SIGN OK' || { echo 'BUILD FAILED:'; tail -8 /tmp/jara-build-helper.log; exit 1; }",
+          "run_on": "host"
+        },
+        {
+          "description": "Install, launch and attach (pre-signed binary, FIFO stdin)",
+          "command": "rm -f /tmp/jara-attach.fifo; mkfifo /tmp/jara-attach.fifo; (sleep 86400 > /tmp/jara-attach.fifo &); nohup flutter run --use-application-binary build/ios/iphoneos/Runner.app -d 00008140-000A41000A06801C --device-timeout 60 < /tmp/jara-attach.fifo > /tmp/jara-dev.log 2>&1 & echo $! > /tmp/jara-dev.pid; echo dev-session-started",
+          "run_on": "host"
+        },
+        {
+          "description": "Wait for launch and attach",
+          "command": "for i in $(seq 1 60); do grep -q 'Syncing files to device' /tmp/jara-dev.log 2>/dev/null && break; grep -qiE 'error launching|failed to build' /tmp/jara-dev.log 2>/dev/null && { echo 'LAUNCH FAILED:'; tail -10 /tmp/jara-dev.log; exit 1; }; sleep 3; done; tail -8 /tmp/jara-dev.log; grep -q 'Syncing files to device' /tmp/jara-dev.log && echo DEV-SESSION-READY || { echo 'TIMEOUT waiting for launch'; exit 1; }",
+          "run_on": "host"
+        }
+      ],
+      "stop_commands": [
+        {
+          "description": "Kill the flutter dev session",
+          "command": "if [ -f /tmp/jara-dev.pid ]; then kill $(cat /tmp/jara-dev.pid) 2>/dev/null; sleep 2; kill -KILL $(cat /tmp/jara-dev.pid) 2>/dev/null; rm -f /tmp/jara-dev.pid; fi; echo 'dev session stopped'",
+          "run_on": "host"
+        }
+      ]
+    },
+    {
+      "id": "hot-reload",
+      "name": "Hot Reload",
+      "description": "Sends 'r' to the running iPhone dev session's stdin (FIFO) — hot reloads the Dart code on the device in ~1s.",
+      "icon": "Play",
+      "color": "slate",
+      "confirmMessage": "Hot reload the running iPhone dev session?",
+      "commands": [
+        {
+          "description": "Trigger hot reload via FIFO",
+          "command": "if [ -p /tmp/jara-attach.fifo ]; then echo r > /tmp/jara-attach.fifo && echo r-sent-reloading; sleep 3; tail -4 /tmp/jara-dev.log; else echo 'No dev session FIFO — start iPhone Dev Session first'; exit 1; fi",
           "run_on": "host"
         }
       ]
