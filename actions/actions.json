@@ -146,12 +146,19 @@
       ]
     },
     {
-      "id": "iphone-bridge-start",
-      "name": "iPhone Bridge Start",
-      "description": "Starts the CoreDevice tailnet bridge (LaunchAgent) — fake Bonjour + TCP/UDP relay so Xcode/flutter can reach the iPhone over Tailscale from anywhere.",
+      "id": "iphone-bridge",
+      "name": "iPhone Bridge",
+      "description": "CoreDevice tailnet bridge (LaunchAgent) — fake Bonjour + TCP/UDP relay so Xcode/flutter can reach the iPhone over Tailscale from anywhere.",
       "icon": "Rocket",
       "color": "slate",
+      "lifecycle": "service",
       "confirmMessage": "Start the iPhone Tailscale bridge? Requires the one-time USB setup (pairing + Bonjour TXT capture) to be done — the bridge is inert without it.",
+      "stopConfirmMessage": "Stop the iPhone Tailscale bridge?",
+      "status_command": {
+        "description": "Check LaunchAgent + bridge process",
+        "command": "launchctl print gui/$(id -u)/com.jara.coredevice-tailnet >/dev/null 2>&1 && pgrep -f '[c]oredevice_bridge.py --mode host' >/dev/null",
+        "run_on": "host"
+      },
       "commands": [
         {
           "description": "Load the LaunchAgent (or kickstart if already loaded)",
@@ -163,44 +170,11 @@
           "command": "tail -6 /tmp/coredevice-bridge.log 2>/dev/null || echo 'no log yet'",
           "run_on": "host"
         }
-      ]
-    },
-    {
-      "id": "iphone-bridge-stop",
-      "name": "iPhone Bridge Stop",
-      "description": "Stops the CoreDevice tailnet bridge (boots out the LaunchAgent).",
-      "icon": "Hammer",
-      "color": "slate",
-      "confirmMessage": "Stop the iPhone Tailscale bridge?",
-      "commands": [
+      ],
+      "stop_commands": [
         {
           "description": "Boot out the LaunchAgent and wait for full teardown",
           "command": "launchctl bootout gui/$(id -u)/com.jara.coredevice-tailnet 2>/dev/null; for i in $(seq 1 15); do pgrep -f '[c]oredevice_bridge.py --mode host' >/dev/null || break; sleep 1; done; pgrep -f '[c]oredevice_bridge.py --mode host' >/dev/null && echo 'WARNING: process still alive' || echo 'bridge stopped'",
-          "run_on": "host"
-        }
-      ]
-    },
-    {
-      "id": "iphone-bridge-status",
-      "name": "iPhone Bridge Status",
-      "description": "Shows bridge state (LaunchAgent, armed/not-armed Bonjour spoof, Xcode device visibility, log tail).",
-      "icon": "Play",
-      "color": "slate",
-      "confirmMessage": "Check iPhone bridge status?",
-      "commands": [
-        {
-          "description": "LaunchAgent state",
-          "command": "launchctl print gui/$(id -u)/com.jara.coredevice-tailnet 2>/dev/null | grep -E 'state =|pid =' | head -2 || echo 'NOT RUNNING'",
-          "run_on": "host"
-        },
-        {
-          "description": "Xcode device visibility",
-          "command": "xcrun devicectl list devices 2>&1 | head -8",
-          "run_on": "host"
-        },
-        {
-          "description": "Bridge log tail",
-          "command": "tail -6 /tmp/coredevice-bridge.log 2>/dev/null || echo 'no log yet'",
           "run_on": "host"
         }
       ]

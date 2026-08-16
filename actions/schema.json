@@ -28,29 +28,55 @@
       "type": "string",
       "description": "Confirmation prompt shown before execution"
     },
+    "lifecycle": {
+      "type": "string",
+      "enum": ["one-shot", "service"],
+      "default": "one-shot",
+      "description": "service = runs until manually stopped; portal shows a start/stop toggle with probed status"
+    },
+    "stopConfirmMessage": {
+      "type": "string",
+      "description": "Confirmation prompt shown before stopping (service actions)"
+    },
     "commands": {
       "type": "array",
-      "description": "Ordered list of shell commands to execute",
-      "items": {
-        "type": "object",
-        "properties": {
-          "description": {
-            "type": "string",
-            "description": "Human label for this step"
-          },
-          "command": {
-            "type": "string",
-            "description": "Shell command to run"
-          },
-          "run_on": {
-            "type": "string",
-            "enum": ["host", "container"],
-            "description": "Where to run: 'host' runs directly on macOS via SSH, 'container' (default) runs inside code-server"
-          }
-        },
-        "required": ["description", "command"]
-      }
+      "description": "One-shot: the run steps. Service: the START steps.",
+      "items": { "$ref": "#/definitions/command" }
+    },
+    "stop_commands": {
+      "type": "array",
+      "description": "Service only: steps run when stopping.",
+      "items": { "$ref": "#/definitions/command" }
+    },
+    "status_command": {
+      "$ref": "#/definitions/command",
+      "description": "Service only: probe. Exit 0 = running, non-zero = stopped."
+    },
+    "probe_interval": {
+      "type": "number",
+      "description": "Optional per-action probe interval in seconds"
     }
   },
-  "required": ["id", "name", "description"]
+  "required": ["id", "name", "description"],
+  "definitions": {
+    "command": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Human label for this step"
+        },
+        "command": {
+          "type": "string",
+          "description": "Shell command to run"
+        },
+        "run_on": {
+          "type": "string",
+          "enum": ["host", "container"],
+          "description": "Where to run: 'host' runs directly on macOS via SSH, 'container' (default) runs inside code-server"
+        }
+      },
+      "required": ["description", "command"]
+    }
+  }
 }
