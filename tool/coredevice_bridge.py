@@ -72,6 +72,7 @@ def load_conf(path):
         "rp_minver": get("bonjour", "minver", "8").strip(),
         "rp_flags": get("bonjour", "flags", "0").strip(),
         "spoof_hostname": get("bonjour", "spoof_hostname", "").strip(),
+        "legacy_records": get("bonjour", "legacy_records", "false").strip(),
     }
 
 
@@ -233,6 +234,14 @@ def spawn_dns_sd(cfg, lan_ip):
         f"flags={cfg['rp_flags']}",
     ]
     procs.append(subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
+    # Legacy records (_remoted/_apple-mobdev2) attract the Mac's OWN legacy
+    # daemons (remoted, usbmuxd, remotepairingd), which race CoreDeviceService
+    # for the phone's single trusted-tunnel session and starve it out.
+    # CoreDevice discovery only needs _remotepairing — skip the legacy spoofs
+    # unless explicitly enabled in the conf ([bonjour] legacy_records=true).
+    if cfg.get("legacy_records", "false").lower() != "true":
+        log("legacy Bonjour spoofs skipped (set [bonjour] legacy_records=true to enable)")
+        return procs
     # Secondary: remoted XPC + legacy wireless usbmux — same front door
     procs.append(subprocess.Popen(
         ["dns-sd", "-P", cfg["rp_instance"], "_remoted._tcp", "local", str(front), host, lan_ip, "flags=0"],
@@ -270,6 +279,14 @@ async def run(cfg, mode):
         log(f"CONTAINER mode: 0.0.0.0 -> {upstream} (iPhone tailnet)")
 
     ports = [cfg["front_door"]] + list(range(cfg["range_start"], cfg["range_end"] + 1))
+    # CRITICAL: macOS mDNSResponder's unicast-DNS socket can squat on a random
+    # ephemeral port inside our relay range (seen on 55263). Once it does, the
+    # bind fails forever until mDNSResponder restarts. Bind ports most likely
+    # to be inside the phone's trusted-tunnel block FIRST, so a fresh bridge
+    # start claims them before anything else can race us.
+    CRITICAL_PORTS = [55263, 55262, 55261, 55264, 55265, 55260, 55266]
+    ports = [p for p in ports if p not in CRITICAL_PORTS]
+    ports = [cfg["front_door"]] + CRITICAL_PORTS + ports
     failures = 0
     for port in ports:
         for start in (start_tcp, start_udp):
