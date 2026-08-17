@@ -128,6 +128,26 @@ rewrites. Specifically:
   absent from the codebase. This keeps the architecture honest — if a V2 feature
   would require a different database schema, that schema exists in V1 behind a flag.
 
+### 3.6 Design System on Established Components
+
+The UI is built on an **established component library with JARA's design language
+implemented on top** — extending §3.4's no-reinventing-wheels principle from
+utilities to components:
+
+- **Component base**: `forui` — a shadcn/ui-inspired, brand-neutral component
+  library restyled through its theme system to the JARA design language. Screens
+  never hand-roll components and never use Material widgets directly.
+- **Liquid-glass chrome**: `liquid_glass_widgets` provides iOS 26-style glass
+  surfaces for navigation chrome only (bottom tab bar, app bar, sheets, dialogs,
+  toggles/sliders, grouped settings sections). Content stays opaque — glass is a
+  platter, not a wrapper.
+- **Typography**: Zalando Sans (OFL, bundled with the app — no network fetch) for
+  all text, all themes, both platforms.
+- **One design system on both platforms.** No Material look, no platform-adaptive
+  dual design languages. Grayscale-at-rest (§3.2) and the brand tokens (ADR-008)
+  are expressed as theme tokens on top of the base library.
+- Decision record: ADR-010. Execution: PLAN-005.
+
 ---
 
 ## 4. Feature Matrix
@@ -247,6 +267,7 @@ for any of these will be closed with a reference to this section.
 | Framework | **Flutter** (latest stable) | Single codebase for iOS + Android, mature ecosystem, hot reload for agentic dev, strong GPS/health plugin support |
 | Language | **Dart** (strict mode) | Flutter's language, sound null safety |
 | State management | **Riverpod** | Compile-safe, testable, scales from simple to complex |
+| UI components | **`forui` + `liquid_glass_widgets`** | Established component base restyled to the JARA design language (grayscale-at-rest); liquid-glass chrome for a modern iOS 26 feel. No Material look (ADR-010, §3.6) |
 | Local database | **SQLite** via `drift` (formerly moor) | Type-safe SQLite with migrations, perfect for structured run data |
 | GPS / Location | `geolocator` + `background_fetch` | Battle-tested Flutter location plugins |
 | Maps | `flutter_map` + OpenStreetMap tiles | No API key needed, works offline with pre-cached tiles, no Google dependency |
@@ -266,6 +287,8 @@ for any of these will be closed with a reference to this section.
 | Kotlin Multiplatform | Less mature, smaller ecosystem, no single UI codebase, harder for agentic dev |
 | SwiftUI + Jetpack Compose | Two codebases = double the work, double the bugs, double the agent context |
 | Google Maps | Requires API key + billing account; OpenStreetMap is free and works offline |
+| Material Design widgets | Design direction (§3.6): no Material look. One brand-first design language across platforms (ADR-010) |
+| Cupertino widgets (as base) | Frozen iOS 13-era design; no Liquid Glass path (flutter/flutter#170310, P3, unassigned); theming too shallow for a custom design language |
 | Firebase / Supabase | Requires account, server-side database, violates "no accounts" principle |
 | `sqflite` (raw) | `drift` provides type-safe queries, migrations, and DAOs — worth the dependency |
 
@@ -410,7 +433,8 @@ a fixed grid.
 
 ### 7.4 Typography & Spacing
 
-- System font stack (San Francisco on iOS, Roboto on Android)
+- **Zalando Sans** (OFL, bundled as app assets — no network fetch) for all text,
+  all themes, both platforms. Static weights; no variable-font reliance.
 - Generous whitespace — the app breathes
 - Consistent spacing scale (4px base unit: 4, 8, 12, 16, 24, 32, 48)
 - No decorative fonts, no animated text, no confetti
@@ -680,13 +704,19 @@ earned through sustained, high-quality contributions — not assigned.
 
 ## 11. Project Phases
 
-### Phase 0: Planning (Current)
+> **Status (2026-08-16):** Phase 0–2 complete. Phase 3 (V1.5 Features) is
+> next, starting with the design-system migration (PLAN-005), then V1
+> polish + V1.5 features (PLAN-004). A maintainer-only tooling bridge
+> (Portal Actions + device testing, tracked in `.hermes/plans/`) sits
+> between Phase 2 and Phase 3 and is not a product phase.
+
+### Phase 0: Planning ✅ (complete 2026-08-12)
 - GOAL.md (this document)
 - AGENTS.md draft
 - Architecture decisions documented
 - Hermes `jara-project` skill created
 
-### Phase 1: Foundation
+### Phase 1: Foundation ✅ (complete 2026-08-13)
 - Flutter project scaffold with feature-based folder structure
 - Database layer (drift + migrations + forward-looking schema)
 - GPS/location layer (recording + background)
@@ -703,7 +733,7 @@ earned through sustained, high-quality contributions — not assigned.
 - CI pipeline (lint, test, build)
 - GitHub branch ruleset
 
-### Phase 2: Self-Improvement Activation
+### Phase 2: Self-Improvement Activation ✅ (complete 2026-08-14)
 - Hermes `jara-project` skill
 - Hermes cron job for daily triage
 - Hermes implementation workflow (issue → branch → PR)
@@ -712,18 +742,29 @@ earned through sustained, high-quality contributions — not assigned.
 - Maestro smoketest suite + pre-merge gate on maintainer hardware
 - End-to-end test: submit Change Request → triaged → implemented → merged → deployed
 - AGENTS.md finalized
+- First release path: dev→main PRs + CI build workflows green (iOS + Android),
+  CR screenshot upload + in-app status screen (§2), dogfooding vision loop
 
-### Phase 3: V1.5 Features
+### Phase 3: V1.5 Features (next — PLAN-005 first, then PLAN-004)
+- **Design-system migration (PLAN-005) — first.** Established component
+  base (`forui`) + custom JARA theme + liquid-glass chrome accents.
+  App-wide restyle; every screen leaves Material before V1.5 features
+  are built on the new kit.
+- V1 polish from dogfooding findings (analytics chart issues #4/#5 —
+  #5's chart-accent rules are decided in the PLAN-005 context)
+- Dogfood cron activation (resumed after the restyle — no stale visual
+  findings against the old UI)
 - As prioritized by Change Requests
-- Guided by GOAL.md feature matrix
+- Guided by GOAL.md feature matrix (§7)
+- TestFlight setup when the maintainer's Apple Developer subscription lands
 
-### Phase 4: Public Release
+### Phase 4: Public Release (future)
 - App Store submission
 - Play Store submission
 - Public repo announcement
 - Project website
 
-### Phase 5: Ongoing Maintenance
+### Phase 5: Ongoing Maintenance (future)
 - Fully driven by the self-improvement loop
 - Change Requests → Triage → Implementation → Release
 - Periodic GOAL.md review and amendment

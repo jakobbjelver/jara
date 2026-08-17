@@ -1,0 +1,90 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "JARA Portal Action",
+  "description": "Schema for a single action definition in actions.json",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique action identifier used in routes"
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable action name shown in the Portal UI"
+    },
+    "description": {
+      "type": "string",
+      "description": "Short summary of what the action does"
+    },
+    "info": {
+      "type": "string",
+      "description": "Optional long-form details shown in the card's info tooltip"
+    },
+    "note": {
+      "type": "string",
+      "description": "Optional callout rendered as a note banner in the card's info tooltip"
+    },
+    "icon": {
+      "type": "string",
+      "description": "Lucide icon name"
+    },
+    "color": {
+      "type": "string",
+      "description": "Optional theme color hint"
+    },
+    "confirmMessage": {
+      "type": "string",
+      "description": "Confirmation prompt shown before execution"
+    },
+    "lifecycle": {
+      "type": "string",
+      "enum": ["one-shot", "service"],
+      "default": "one-shot",
+      "description": "service = runs until manually stopped; portal shows a start/stop toggle with probed status"
+    },
+    "stopConfirmMessage": {
+      "type": "string",
+      "description": "Confirmation prompt shown before stopping (service actions)"
+    },
+    "commands": {
+      "type": "array",
+      "description": "One-shot: the run steps. Service: the START steps.",
+      "items": { "$ref": "#/definitions/command" }
+    },
+    "stop_commands": {
+      "type": "array",
+      "description": "Service only: steps run when stopping.",
+      "items": { "$ref": "#/definitions/command" }
+    },
+    "status_command": {
+      "$ref": "#/definitions/command",
+      "description": "Service only: probe. Exit 0 = running, non-zero = stopped."
+    },
+    "probe_interval": {
+      "type": "number",
+      "description": "Optional per-action probe interval in seconds"
+    }
+  },
+  "required": ["id", "name", "description"],
+  "definitions": {
+    "command": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Human label for this step"
+        },
+        "command": {
+          "type": "string",
+          "description": "Shell command to run"
+        },
+        "run_on": {
+          "type": "string",
+          "enum": ["host", "container"],
+          "description": "Where to run: 'host' runs directly on macOS via SSH, 'container' (default) runs inside code-server"
+        }
+      },
+      "required": ["description", "command"]
+    }
+  }
+}
