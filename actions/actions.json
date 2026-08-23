@@ -214,6 +214,22 @@
       ]
     },
     {
+      "id": "hot-restart",
+      "name": "Hot Restart",
+      "description": "Full framework restart on the running iPhone dev session (clears desync/error screens).",
+      "info": "Sends 'R' to the dev session's FIFO — rebuilds the widget tree from scratch. Use when a reload left the app in a broken state (e.g. 'Lookup failed' inspector error).",
+      "icon": "Hammer",
+      "color": "slate",
+      "confirmMessage": "Hot restart the running iPhone dev session?",
+      "commands": [
+        {
+          "description": "Trigger hot restart via FIFO",
+          "command": "if [ -p /tmp/jara-attach.fifo ]; then echo R > /tmp/jara-attach.fifo && echo R-sent-restarting; sleep 5; tail -4 /tmp/jara-dev.log; else echo 'No dev session FIFO — start iPhone Dev Session first'; exit 1; fi",
+          "run_on": "host"
+        }
+      ]
+    },
+    {
       "id": "hot-reload",
       "name": "Hot Reload",
       "description": "Hot-reload Dart code on the running iPhone dev session.",
