@@ -185,6 +185,11 @@
       },
       "commands": [
         {
+          "description": "Pre-flight: reachability + DDI staging (self-healing)",
+          "command": "bash /Users/jakob/Repos/jara/tool/iphone-dev-preflight.sh",
+          "run_on": "host"
+        },
+        {
           "description": "Build and sign via GUI-context helper (LaunchAgent)",
           "command": "rm -f /tmp/jara-build-helper.log; launchctl bootstrap gui/$(id -u) /Users/jakob/Repos/jara/tool/com.jara.build-ios-helper.plist 2>/dev/null || launchctl kickstart -k gui/$(id -u)/com.jara.build-ios-helper 2>/dev/null || { echo 'helper launch failed'; exit 1; }; for i in $(seq 1 60); do grep -q HELPER_DONE /tmp/jara-build-helper.log 2>/dev/null && break; sleep 5; done; grep -q 'HELPER_DONE rc=0' /tmp/jara-build-helper.log && echo 'BUILD+SIGN OK' || { echo 'BUILD FAILED:'; tail -8 /tmp/jara-build-helper.log; exit 1; }",
           "run_on": "host"
@@ -196,7 +201,7 @@
         },
         {
           "description": "Wait for launch and attach",
-          "command": "for i in $(seq 1 60); do grep -q 'Syncing files to device' /tmp/jara-dev.log 2>/dev/null && break; grep -qiE 'error launching|failed to build' /tmp/jara-dev.log 2>/dev/null && { echo 'LAUNCH FAILED:'; tail -10 /tmp/jara-dev.log; exit 1; }; sleep 3; done; tail -8 /tmp/jara-dev.log; grep -q 'Syncing files to device' /tmp/jara-dev.log && echo DEV-SESSION-READY || { echo 'TIMEOUT waiting for launch'; exit 1; }",
+          "command": "for i in $(seq 1 60); do grep -q 'Syncing files to device' /tmp/jara-dev.log 2>/dev/null && break; grep -qiE 'error launching|failed to build|No supported devices|error 1011|unable to locate a device' /tmp/jara-dev.log 2>/dev/null && { echo 'LAUNCH FAILED:'; tail -10 /tmp/jara-dev.log; exit 1; }; sleep 3; done; tail -8 /tmp/jara-dev.log; grep -q 'Syncing files to device' /tmp/jara-dev.log && echo DEV-SESSION-READY || { echo 'TIMEOUT waiting for launch — check /tmp/jara-dev.log (phone unlocked? bridge up?)'; exit 1; }",
           "run_on": "host"
         }
       ],
