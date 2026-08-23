@@ -144,7 +144,7 @@
       "stopConfirmMessage": "Stop the iPhone dev session? (Detaches the debugger; the app keeps running.)",
       "status_command": {
         "description": "Check dev session process",
-        "command": "[ -f /tmp/jara-dev.pid ] && kill -0 $(cat /tmp/jara-dev.pid) 2>/dev/null",
+        "command": "[ -f /tmp/jara-dev.ready ] && [ -f /tmp/jara-dev.pid ] && kill -0 $(cat /tmp/jara-dev.pid 2>/dev/null) 2>/dev/null",
         "run_on": "host"
       },
       "commands": [
@@ -159,20 +159,20 @@
           "run_on": "host"
         },
         {
-          "description": "Install, launch and attach (pre-signed binary, FIFO stdin)",
-          "command": "rm -f /tmp/jara-attach.fifo; mkfifo /tmp/jara-attach.fifo; (sleep 86400 > /tmp/jara-attach.fifo 2>/dev/null < /dev/null &); nohup flutter run --use-application-binary build/ios/iphoneos/Runner.app -d 00008140-000A41000A06801C --device-timeout 60 < /tmp/jara-attach.fifo > /tmp/jara-dev.log 2>&1 & echo $! > /tmp/jara-dev.pid; echo dev-session-started",
+          "description": "Start dev-session helper (GUI LaunchAgent: attached flutter run)",
+          "command": "launchctl bootout gui/$(id -u)/com.jara.dev-session 2>/dev/null; rm -f /tmp/jara-dev.log /tmp/jara-dev.pid /tmp/jara-dev.ready /tmp/jara-attach.fifo; launchctl bootstrap gui/$(id -u) /Users/jakob/Repos/jara/tool/com.jara.dev-session.plist 2>/dev/null || launchctl kickstart -k gui/$(id -u)/com.jara.dev-session 2>/dev/null || { echo 'dev-session helper launch failed'; exit 1; }; sleep 2; launchctl print gui/$(id -u)/com.jara.dev-session 2>/dev/null | grep -E 'state =|pid =' | head -2 || echo 'agent ok'; echo dev-session-started",
           "run_on": "host"
         },
         {
-          "description": "Wait for launch and attach",
-          "command": "for i in $(seq 1 60); do grep -q 'Syncing files to device' /tmp/jara-dev.log 2>/dev/null && break; grep -qiE 'error launching|failed to build|No supported devices|error 1011|unable to locate a device' /tmp/jara-dev.log 2>/dev/null && { echo 'LAUNCH FAILED:'; tail -10 /tmp/jara-dev.log; exit 1; }; sleep 3; done; tail -8 /tmp/jara-dev.log; grep -q 'Syncing files to device' /tmp/jara-dev.log && echo DEV-SESSION-READY || { echo 'TIMEOUT waiting for launch \u2014 check /tmp/jara-dev.log (phone unlocked? bridge up?)'; exit 1; }",
+          "description": "Wait for launch + attach (fail fast on local-network denial)",
+          "command": "for i in $(seq 1 60); do grep -qE 'Syncing files to device|A Dart VM Service' /tmp/jara-dev.log 2>/dev/null && break; grep -qiE 'could not access the local network|SocketException: Send failed|no route to host|error launching|failed to build|No supported devices|error 1011|unable to locate a device|DEV-SESSION: ended' /tmp/jara-dev.log 2>/dev/null && { echo 'LAUNCH FAILED:'; tail -12 /tmp/jara-dev.log; echo; echo 'If it is a Local Network denial (errno 65): the iPhone Dev Session runs in the GUI context; approve the Local Network / Automation prompt once via RustDesk (System Settings > Privacy & Security).'; exit 1; }; sleep 3; done; tail -8 /tmp/jara-dev.log; grep -q 'Syncing files to device' /tmp/jara-dev.log && { touch /tmp/jara-dev.ready; echo DEV-SESSION-READY; } || { echo 'TIMEOUT waiting for attach \\u2014 check /tmp/jara-dev.log (phone unlocked?)'; exit 1; }",
           "run_on": "host"
         }
       ],
       "stop_commands": [
         {
-          "description": "Kill the flutter dev session",
-          "command": "if [ -f /tmp/jara-dev.pid ]; then kill $(cat /tmp/jara-dev.pid) 2>/dev/null; sleep 2; kill -KILL $(cat /tmp/jara-dev.pid) 2>/dev/null; rm -f /tmp/jara-dev.pid; fi; echo 'dev session stopped'",
+          "description": "Stop the dev session (bootout LaunchAgent)",
+          "command": "launchctl bootout gui/$(id -u)/com.jara.dev-session 2>/dev/null; for i in $(seq 1 15); do kill -0 $(cat /tmp/jara-dev.pid 2>/dev/null) 2>/dev/null || break; sleep 1; done; kill -0 $(cat /tmp/jara-dev.pid 2>/dev/null) 2>/dev/null && echo 'WARNING: session still alive' || echo 'dev session stopped'; rm -f /tmp/jara-dev.pid /tmp/jara-dev.ready /tmp/jara-attach.fifo",
           "run_on": "host"
         }
       ]
@@ -187,8 +187,8 @@
       "confirmMessage": "Hot restart the running iPhone dev session?",
       "commands": [
         {
-          "description": "Trigger hot restart via FIFO",
-          "command": "if [ -p /tmp/jara-attach.fifo ]; then echo R > /tmp/jara-attach.fifo && echo R-sent-restarting; sleep 5; tail -4 /tmp/jara-dev.log; else echo 'No dev session FIFO \u2014 start iPhone Dev Session first'; exit 1; fi",
+          "description": "Trigger hot restart via FIFO (guarded)",
+          "command": "[ -p /tmp/jara-attach.fifo ] || { echo 'No dev session FIFO \\u2014 start iPhone Dev Session first'; exit 1; }; [ -f /tmp/jara-dev.pid ] && kill -0 $(cat /tmp/jara-dev.pid 2>/dev/null) 2>/dev/null || { echo 'Dev session not running \\u2014 start iPhone Dev Session first'; exit 1; }; perl -e 'alarm 6; exec @ARGV' sh -c 'echo R > /tmp/jara-attach.fifo' 2>/dev/null && { echo R-sent-restarting; sleep 5; tail -4 /tmp/jara-dev.log; } || { echo 'FIFO write timed out \\u2014 debugger not live; restart the dev session'; exit 1; }",
           "run_on": "host"
         }
       ]
@@ -203,8 +203,24 @@
       "confirmMessage": "Hot reload the running iPhone dev session?",
       "commands": [
         {
-          "description": "Trigger hot reload via FIFO",
-          "command": "if [ -p /tmp/jara-attach.fifo ]; then echo r > /tmp/jara-attach.fifo && echo r-sent-reloading; sleep 3; tail -4 /tmp/jara-dev.log; else echo 'No dev session FIFO \u2014 start iPhone Dev Session first'; exit 1; fi",
+          "description": "Trigger hot reload via FIFO (guarded)",
+          "command": "[ -p /tmp/jara-attach.fifo ] || { echo 'No dev session FIFO \\u2014 start iPhone Dev Session first'; exit 1; }; [ -f /tmp/jara-dev.pid ] && kill -0 $(cat /tmp/jara-dev.pid 2>/dev/null) 2>/dev/null || { echo 'Dev session not running \\u2014 start iPhone Dev Session first'; exit 1; }; perl -e 'alarm 6; exec @ARGV' sh -c 'echo r > /tmp/jara-attach.fifo' 2>/dev/null && { echo r-sent-reloading; sleep 3; tail -4 /tmp/jara-dev.log; } || { echo 'FIFO write timed out \\u2014 debugger not live; restart the dev session'; exit 1; }",
+          "run_on": "host"
+        }
+      ]
+    },
+    {
+      "id": "side-deploy",
+      "name": "Side-Deploy (iPhone)",
+      "description": "Build unsigned debug ipa and publish to the files.messer.wtf drop for SideStore.",
+      "info": "One-shot: flutter build ios --debug --no-codesign -> Runner-<epoch>.ipa + source.json -> /Volumes/Media/Files/Projects/JARA/. No Mac-side signing needed (SideStore signs on-device). ~1-2 min build.",
+      "icon": "Rocket",
+      "color": "slate",
+      "confirmMessage": "Build an unsigned debug ipa and publish it to the JARA drop for SideStore? Takes ~1-2 min. Jakob can then install/update JARA from SideStore on the iPhone.",
+      "commands": [
+        {
+          "description": "Build ipa + publish to drop",
+          "command": "bash tool/side-deploy.sh",
           "run_on": "host"
         }
       ]
