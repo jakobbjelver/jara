@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """JARA brand asset generator — deterministic, one command, no manual exports.
 
-Renders the JARA Stride mark (open-loop run-glyph, see .hermes/brand/BRAND.md)
-to every required platform asset and stages them under brand/generated/.
-Assets are NOT wired into the app until the brand guide is approved
-(PLAN-002 §1.3 gate).
+Renders the JARA Swoosh mark (filled ribbon silhouette read as an S through
+negative space, see .hermes/brand/BRAND.md) to every required platform asset
+and stages them under brand/generated/.
+
+The mark's polygon data is sourced from brand/swoosh_rings.json (normalized
+0..1 coordinates, Douglas-Peucker-simplified trace of the approved sweep).
 
 Usage:
     python3 tool/generate_brand_assets.py            # all assets
@@ -28,56 +30,20 @@ INK = (26, 26, 28)            # #1A1A1C
 SURFACE_INVERSE = (38, 38, 43)  # #26262B
 MARK_ON_INVERSE = (232, 232, 234)  # #E8E8EA
 
-# ── Mark geometry (relative to canvas size 1.0, BRAND.md §2) ────────────
-# The Route mark: an angular folded path (map-route switchbacks), tilted
-# 20° clockwise so it reads as legs mid-stride. Flat reading: the letters
-# J + A fused — the back of the J flows into the long line of the A.
-STROKE = 0.11
-ROUTE_POINTS = [
-    (0.24, 0.62), (0.46, 0.62), (0.46, 0.38), (0.68, 0.38), (0.68, 0.66),
-]
-TILT_DEG = 20                 # clockwise rotation of the whole path
-FIT_MARGIN = 0.16             # mark fills 0.16..0.84 of the canvas
-
-
-def _rotated_points(deg: float):
-    import math
-
-    rad = math.radians(deg)
-    c, s = math.cos(rad), math.sin(rad)
-    out = []
-    for x, y in ROUTE_POINTS:
-        dx, dy = x - 0.5, y - 0.5
-        # Screen coordinates (y down): this is CLOCKWISE as seen on screen.
-        out.append((0.5 + dx * c - dy * s, 0.5 + dx * s + dy * c))
-    return out
+# ── Mark geometry ────────────────────────────────────────────────────────
+# The JARA Swoosh: a family of filled closed paths in normalized (0..1)
+# coordinates. One continuous fill reads as a dynamic, motion-forward sweep;
+# the S is implied by the negative space. Grayscale only.
+RINGS = json.loads((ROOT / "brand" / "swoosh_rings.json").read_text())
 
 
 def draw_mark(draw: ImageDraw.ImageDraw, size: int, color) -> None:
-    """Draw the Route mark centered on a square canvas of `size` px.
+    """Fill the Swoosh polygons on a square canvas of `size` px.
 
-    All geometry is relative to `size`; render at a supersampled size and
-    downscale for smooth edges. Grayscale only."""
-    s = size
-    stroke = max(2, int(round(s * STROKE)))
-
-    pts = _rotated_points(TILT_DEG)
-
-    # Normalize: fit the (unstroked) path into the FIT_MARGIN box, centered.
-    xs = [p[0] for p in pts]
-    ys = [p[1] for p in pts]
-    w, h = max(xs) - min(xs), max(ys) - min(ys)
-    scale = min((1 - 2 * FIT_MARGIN) / w, (1 - 2 * FIT_MARGIN) / h)
-    cx = (max(xs) + min(xs)) / 2
-    cy = (max(ys) + min(ys)) / 2
-    fit = [(0.5 + (x - cx) * scale, 0.5 + (y - cy) * scale) for x, y in pts]
-
-    draw.line(
-        [(x * s, y * s) for x, y in fit],
-        fill=color,
-        width=stroke,
-        joint="curve",
-    )
+    `size` is the (already supersampled) render size; polygon coords are
+    normalized 0..1 and scaled by `size`. Grayscale only."""
+    for ring in RINGS:
+        draw.polygon([(x * size, y * size) for x, y in ring], fill=color)
 
 
 def render_mark(size: int, background=None, color=MARK_ON_INVERSE,
@@ -93,17 +59,10 @@ def render_mark(size: int, background=None, color=MARK_ON_INVERSE,
     return img.resize((size, size), Image.LANCZOS)
 
 
-# ── iOS app icon set ─────────────────────────────────────────────────────
-IOS_ICONS = [
-    ("Icon-App-20x20@1x.png", 20), ("Icon-App-20x20@2x.png", 40),
-    ("Icon-App-20x20@3x.png", 60), ("Icon-App-29x29@1x.png", 29),
-    ("Icon-App-29x29@2x.png", 58), ("Icon-App-29x29@3x.png", 87),
-    ("Icon-App-40x40@1x.png", 40), ("Icon-App-40x40@2x.png", 80),
-    ("Icon-App-40x40@3x.png", 120), ("Icon-App-60x60@2x.png", 120),
-    ("Icon-App-60x60@3x.png", 180), ("Icon-App-76x76@1x.png", 76),
-    ("Icon-App-76x76@2x.png", 152), ("Icon-App-83.5x83.5@2x.png", 167),
-    ("Icon-App-1024x1024@1x.png", 1024),
-]
+# ── iOS app icon (modern single-size format) ────────────────────────────
+# Xcode/iOS 26 compile a single 1024 universal image; all display sizes are
+# derived from it. The multi-image "iphone" appiconset format is dropped.
+IOS_ICON_SIZE = 1024
 
 # ── Android mipmaps ──────────────────────────────────────────────────────
 ANDROID_MIPMAPS = [("mdpi", 48), ("hdpi", 72), ("xhdpi", 96),
@@ -114,7 +73,7 @@ IOS_SPLASHES = [("LaunchImage.png", (168, 185)),
                 ("LaunchImage@2x.png", (336, 370)),
                 ("LaunchImage@3x.png", (504, 555))]
 
-# ── Android launch backgrounds ──────────────────────────────────────────
+# ── Android launch backgrounds ───────────────────────────────────────────
 ANDROID_LAUNCH = [("drawable-mdpi", (480, 800)), ("drawable-hdpi", (720, 1280)),
                   ("drawable-xhdpi", (960, 1600)), ("drawable-xxhdpi", (1280, 1920)),
                   ("drawable-xxxhdpi", (1600, 2560))]
@@ -130,30 +89,27 @@ def render_splash(width: int, height: int, color=MARK_ON_INVERSE) -> Image.Image
 
 
 def ios_contents_json() -> dict:
-    """Contents.json for the generated AppIcon.appiconset."""
-    images = []
-    for filename, size in IOS_ICONS:
-        parts = filename.replace(".png", "").split("@")
-        scale = parts[1].rstrip("x") if len(parts) > 1 else "1x"
-        dim = float(parts[0].rsplit("x", 1)[1])
-        images.append({
-            "filename": filename,
-            "idiom": "ios-marketing" if "1024" in filename else "iphone",
-            "scale": scale,
-            "size": f"{dim:g}x{dim:g}",
-        })
-    return {"images": images, "info": {"author": "xcode", "version": 1}}
+    """Contents.json for the single-size AppIcon.appiconset."""
+    return {
+        "images": [{
+            "filename": "AppIcon.png",
+            "idiom": "universal",
+            "platform": "ios",
+            "size": "1024x1024",
+        }],
+        "info": {"author": "xcode", "version": 1},
+    }
 
 
 def generate_all() -> list[Path]:
     written: list[Path] = []
 
-    # iOS app icon set
+    # iOS app icon (single 1024 universal; display sizes derived at build)
     ios_dir = OUT / "ios" / "AppIcon.appiconset"
     ios_dir.mkdir(parents=True, exist_ok=True)
-    for filename, size in IOS_ICONS:
-        render_mark(size, background=SURFACE_INVERSE).save(ios_dir / filename)
-        written.append(ios_dir / filename)
+    p = ios_dir / "AppIcon.png"
+    render_mark(IOS_ICON_SIZE, background=SURFACE_INVERSE).save(p)
+    written.append(p)
     (ios_dir / "Contents.json").write_text(json.dumps(ios_contents_json(), indent=2))
     written.append(ios_dir / "Contents.json")
 
