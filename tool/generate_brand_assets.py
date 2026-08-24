@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """JARA brand asset generator — deterministic, one command, no manual exports.
 
-Renders the JARA Stride mark (open-loop run-glyph, see .hermes/brand/BRAND.md)
-to every required platform asset and stages them under brand/generated/.
-Assets are NOT wired into the app until the brand guide is approved
-(PLAN-002 §1.3 gate).
+Renders the JARA Stride mark (a bold geometric "J + A" monogram that also
+reads as two legs mid-run, see .hermes/brand/BRAND.md) to every required
+platform asset and stages them under brand/generated/.
+
+The mark is drawn from a small set of parametric strokes (a Catmull-Rom
+trailing J-bowl, a straight leading leg, and the A crossbar) at a uniform
+stroke weight — no external geometry file, no manual exports.
 
 Usage:
     python3 tool/generate_brand_assets.py            # all assets
@@ -28,56 +31,62 @@ INK = (26, 26, 28)            # #1A1A1C
 SURFACE_INVERSE = (38, 38, 43)  # #26262B
 MARK_ON_INVERSE = (232, 232, 234)  # #E8E8EA
 
-# ── Mark geometry (relative to canvas size 1.0, BRAND.md §2) ────────────
-# The Route mark: an angular folded path (map-route switchbacks), tilted
-# 20° clockwise so it reads as legs mid-stride. Flat reading: the letters
-# J + A fused — the back of the J flows into the long line of the A.
-STROKE = 0.11
-ROUTE_POINTS = [
-    (0.24, 0.62), (0.46, 0.62), (0.46, 0.38), (0.68, 0.38), (0.68, 0.66),
+# ── Mark geometry (the JARA Stride) ──────────────────────────────────────
+# One A (two legs + crossbar) whose trailing leg sweeps into a tight J-bowl:
+# the J letters; mid-stride runner (bent trailing leg, extended leading leg,
+# hips at the apex). All coords normalized 0..1, uniform stroke width.
+STROKE_W = 0.085
+
+TRAILING_CTRL = [  # smooth J-bowl + the A's left leg, up to the apex
+    (0.25, 0.58), (0.20, 0.68), (0.24, 0.80), (0.32, 0.84),
+    (0.40, 0.79), (0.46, 0.67), (0.51, 0.52), (0.58, 0.18),
 ]
-TILT_DEG = 20                 # clockwise rotation of the whole path
-FIT_MARGIN = 0.16             # mark fills 0.16..0.84 of the canvas
+LEADING_LEG = [(0.58, 0.18), (0.71, 0.54), (0.81, 0.76)]  # A's right leg
+CROSSBAR = [(0.515, 0.50), (0.695, 0.50)]                # the A crossbar
 
 
-def _rotated_points(deg: float):
-    import math
-
-    rad = math.radians(deg)
-    c, s = math.cos(rad), math.sin(rad)
+def catmull(pts, n=40):
+    """Sample a Catmull-Rom spline through pts -> a dense polyline."""
     out = []
-    for x, y in ROUTE_POINTS:
-        dx, dy = x - 0.5, y - 0.5
-        # Screen coordinates (y down): this is CLOCKWISE as seen on screen.
-        out.append((0.5 + dx * c - dy * s, 0.5 + dx * s + dy * c))
+    if len(pts) == 2:
+        return [pts[0], pts[1]]
+    for i in range(len(pts) - 1):
+        p0 = pts[i - 1] if i > 0 else pts[i]
+        p1, p2 = pts[i], pts[i + 1]
+        p3 = pts[i + 2] if i + 2 < len(pts) else pts[i + 1]
+        for t in range(n):
+            u = t / n
+            u2, u3 = u * u, u * u * u
+            x = 0.5 * ((2 * p1[0]) + (-p0[0] + p2[0]) * u
+                       + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * u2
+                       + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * u3)
+            y = 0.5 * ((2 * p1[1]) + (-p0[1] + p2[1]) * u
+                       + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * u2
+                       + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * u3)
+            out.append((x, y))
+    out.append(pts[-1])
     return out
 
 
+def _stroke(draw: ImageDraw.ImageDraw, size: int, color, pts, w=STROKE_W) -> None:
+    """Draw one thick stroke (round caps) through normalized `pts`."""
+    width = max(2, int(round(size * w)))
+    draw.line([(x * size, y * size) for x, y in pts],
+              fill=color, width=width, joint="curve")
+    r = width // 2
+    for x, y in (pts[0], pts[-1]):
+        draw.ellipse([x * size - r, y * size - r,
+                      x * size + r, y * size + r], fill=color)
+
+
 def draw_mark(draw: ImageDraw.ImageDraw, size: int, color) -> None:
-    """Draw the Route mark centered on a square canvas of `size` px.
+    """Draw the Stride mark on a square canvas of `size` px.
 
-    All geometry is relative to `size`; render at a supersampled size and
-    downscale for smooth edges. Grayscale only."""
-    s = size
-    stroke = max(2, int(round(s * STROKE)))
-
-    pts = _rotated_points(TILT_DEG)
-
-    # Normalize: fit the (unstroked) path into the FIT_MARGIN box, centered.
-    xs = [p[0] for p in pts]
-    ys = [p[1] for p in pts]
-    w, h = max(xs) - min(xs), max(ys) - min(ys)
-    scale = min((1 - 2 * FIT_MARGIN) / w, (1 - 2 * FIT_MARGIN) / h)
-    cx = (max(xs) + min(xs)) / 2
-    cy = (max(ys) + min(ys)) / 2
-    fit = [(0.5 + (x - cx) * scale, 0.5 + (y - cy) * scale) for x, y in pts]
-
-    draw.line(
-        [(x * s, y * s) for x, y in fit],
-        fill=color,
-        width=stroke,
-        joint="curve",
-    )
+    `size` is the (already supersampled) render size; coords are normalized
+    0..1 and scaled by `size`. Grayscale only."""
+    _stroke(draw, size, color, catmull(TRAILING_CTRL))
+    _stroke(draw, size, color, LEADING_LEG)
+    _stroke(draw, size, color, CROSSBAR)
 
 
 def render_mark(size: int, background=None, color=MARK_ON_INVERSE,
@@ -93,17 +102,10 @@ def render_mark(size: int, background=None, color=MARK_ON_INVERSE,
     return img.resize((size, size), Image.LANCZOS)
 
 
-# ── iOS app icon set ─────────────────────────────────────────────────────
-IOS_ICONS = [
-    ("Icon-App-20x20@1x.png", 20), ("Icon-App-20x20@2x.png", 40),
-    ("Icon-App-20x20@3x.png", 60), ("Icon-App-29x29@1x.png", 29),
-    ("Icon-App-29x29@2x.png", 58), ("Icon-App-29x29@3x.png", 87),
-    ("Icon-App-40x40@1x.png", 40), ("Icon-App-40x40@2x.png", 80),
-    ("Icon-App-40x40@3x.png", 120), ("Icon-App-60x60@2x.png", 120),
-    ("Icon-App-60x60@3x.png", 180), ("Icon-App-76x76@1x.png", 76),
-    ("Icon-App-76x76@2x.png", 152), ("Icon-App-83.5x83.5@2x.png", 167),
-    ("Icon-App-1024x1024@1x.png", 1024),
-]
+# ── iOS app icon (modern single-size format) ────────────────────────────
+# Xcode/iOS 26 compile a single 1024 universal image; all display sizes are
+# derived from it. The multi-image "iphone" appiconset format is dropped.
+IOS_ICON_SIZE = 1024
 
 # ── Android mipmaps ──────────────────────────────────────────────────────
 ANDROID_MIPMAPS = [("mdpi", 48), ("hdpi", 72), ("xhdpi", 96),
@@ -114,7 +116,7 @@ IOS_SPLASHES = [("LaunchImage.png", (168, 185)),
                 ("LaunchImage@2x.png", (336, 370)),
                 ("LaunchImage@3x.png", (504, 555))]
 
-# ── Android launch backgrounds ──────────────────────────────────────────
+# ── Android launch backgrounds ───────────────────────────────────────────
 ANDROID_LAUNCH = [("drawable-mdpi", (480, 800)), ("drawable-hdpi", (720, 1280)),
                   ("drawable-xhdpi", (960, 1600)), ("drawable-xxhdpi", (1280, 1920)),
                   ("drawable-xxxhdpi", (1600, 2560))]
@@ -130,30 +132,27 @@ def render_splash(width: int, height: int, color=MARK_ON_INVERSE) -> Image.Image
 
 
 def ios_contents_json() -> dict:
-    """Contents.json for the generated AppIcon.appiconset."""
-    images = []
-    for filename, size in IOS_ICONS:
-        parts = filename.replace(".png", "").split("@")
-        scale = parts[1].rstrip("x") if len(parts) > 1 else "1x"
-        dim = float(parts[0].rsplit("x", 1)[1])
-        images.append({
-            "filename": filename,
-            "idiom": "ios-marketing" if "1024" in filename else "iphone",
-            "scale": scale,
-            "size": f"{dim:g}x{dim:g}",
-        })
-    return {"images": images, "info": {"author": "xcode", "version": 1}}
+    """Contents.json for the single-size AppIcon.appiconset."""
+    return {
+        "images": [{
+            "filename": "AppIcon.png",
+            "idiom": "universal",
+            "platform": "ios",
+            "size": "1024x1024",
+        }],
+        "info": {"author": "xcode", "version": 1},
+    }
 
 
 def generate_all() -> list[Path]:
     written: list[Path] = []
 
-    # iOS app icon set
+    # iOS app icon (single 1024 universal; display sizes derived at build)
     ios_dir = OUT / "ios" / "AppIcon.appiconset"
     ios_dir.mkdir(parents=True, exist_ok=True)
-    for filename, size in IOS_ICONS:
-        render_mark(size, background=SURFACE_INVERSE).save(ios_dir / filename)
-        written.append(ios_dir / filename)
+    p = ios_dir / "AppIcon.png"
+    render_mark(IOS_ICON_SIZE, background=SURFACE_INVERSE).save(p)
+    written.append(p)
     (ios_dir / "Contents.json").write_text(json.dumps(ios_contents_json(), indent=2))
     written.append(ios_dir / "Contents.json")
 
