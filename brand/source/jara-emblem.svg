@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#C4001E"/>
+      <stop offset="0.5" stop-color="#E6002B"/>
+      <stop offset="1" stop-color="#FF2440"/>
+    </linearGradient>
+    <radialGradient id="coreGrad">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="0.35" stop-color="#FFB3BD"/>
+      <stop offset="0.7" stop-color="#FF5C70"/>
+      <stop offset="1" stop-color="#E6002B"/>
+    </radialGradient>
+    <radialGradient id="coreSheen">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="front" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="0.55" stop-color="#FFE3E7"/>
+      <stop offset="1" stop-color="#FFB0BC"/>
+    </linearGradient>
+    <radialGradient id="orbGrad">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="0.5" stop-color="#FFB3BD"/>
+      <stop offset="1" stop-color="#E6002B"/>
+    </radialGradient>
+    <radialGradient id="spark">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="1"/>
+      <stop offset="1" stop-color="#FFB3BD" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+
+  <circle cx="500" cy="490" r="365" fill="url(#coreGrad)"/>
+  <circle cx="425" cy="420" r="130" fill="url(#coreSheen)"/>
+
+  <circle cx="333" cy="810" r="24" fill="url(#orbGrad)"/>
+  <circle cx="333" cy="810" r="34" fill="none" stroke="#FFF0F2" stroke-opacity="0.3" stroke-width="3"/>
+
+  <circle cx="275" cy="295" r="11" fill="#FFF0F2" opacity="0.95"/>
+  <circle cx="435" cy="130" r="10" fill="#FFF0F2" opacity="0.9"/>
+  <circle cx="705" cy="130" r="9" fill="#FFF0F2" opacity="0.85"/>
+
+
+
+  <circle cx="800" cy="255" r="60" fill="url(#orbGrad)"/>
+  <circle cx="865" cy="255" r="65" fill="none" stroke="#FFF0F2" stroke-opacity="0.2" stroke-width="1"/>
+
+  <path d="M 250 60 Q 480 25 720 70" stroke="#FFFFFF" stroke-opacity="0.14" stroke-width="10" fill="none" stroke-linecap="round"/>
+  <path d="M 620 30 Q 780 40 905 120" stroke="#FFFFFF" stroke-opacity="0.1" stroke-width="6" fill="none" stroke-linecap="round"/>
+
+  <ellipse cx="935" cy="210" rx="22" ry="9" transform="rotate(40 935 210)" fill="url(#spark)" opacity="0.9"/>
+  <ellipse cx="970" cy="165" rx="15" ry="6" transform="rotate(40 970 165)" fill="url(#spark)" opacity="0.65"/>
+  <ellipse cx="960" cy="285" rx="16" ry="7" transform="rotate(40 960 285)" fill="url(#spark)" opacity="0.7"/>
+
+  <circle cx="330" cy="60" r="7" fill="url(#spark)" opacity="0.9"/>
+  <circle cx="180" cy="120" r="5" fill="url(#spark)" opacity="0.6"/>
+  <circle cx="80" cy="880" r="6" fill="url(#spark)" opacity="0.55"/>
+  <circle cx="905" cy="170" r="6" fill="url(#spark)" opacity="0.8"/>
+  <circle cx="955" cy="330" r="5" fill="url(#spark)" opacity="0.7"/>
+  <circle cx="900" cy="760" r="7" fill="url(#spark)" opacity="0.6"/>
+  <circle cx="940" cy="830" r="5" fill="url(#spark)" opacity="0.5"/>
+  <circle cx="822" cy="882" r="6" fill="url(#spark)" opacity="0.55"/>
+
+  <circle cx="520" cy="905" r="6" fill="#FFF0F2" opacity="0.7"/>
+  <circle cx="345" cy="925" r="5" fill="#FFF0F2" opacity="0.5"/>
+  <circle cx="690" cy="915" r="5" fill="#FFF0F2" opacity="0.5"/>
+</svg>

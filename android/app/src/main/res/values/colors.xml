@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- JARA brand tokens — keep in sync with .hermes/brand/BRAND.md -->
 <resources>
-    <color name="jara_surface_inverse">#26262B</color>
-    <color name="jara_mark_on_inverse">#E8E8EA</color>
+    <color name="jara_brand_red_deep">#C4001E</color>
+    <color name="jara_brand_red">#E6002B</color>
+    <color name="jara_brand_red_bright">#FF2440</color>
+    <color name="jara_highlight">#FFF0F2</color>
 </resources>

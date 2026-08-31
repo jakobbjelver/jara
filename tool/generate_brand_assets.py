@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """JARA brand asset generator — deterministic, one command, no manual exports.
 
-Renders the JARA Stride mark (open-loop run-glyph, see .hermes/brand/BRAND.md)
-to every required platform asset and stages them under brand/generated/.
-Assets are NOT wired into the app until the brand guide is approved
-(PLAN-002 §1.3 gate).
+Renders the JARA app icon (a glossy red "core-with-orbit" emblem) and the
+mark-only emblem (for splash/launch) to every required platform asset. The
+authoritative artwork is the SVGs in brand/source/ (jara-icon-square.svg,
+jara-icon-rounded.svg, jara-emblem.svg), rasterized once to high-res PNGs at
+1536px by tool/raster_brand_sources.sh. This script only scales those
+canonical rasters — it never redraws the mark.
 
 Usage:
     python3 tool/generate_brand_assets.py            # all assets
@@ -15,193 +17,147 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 from pathlib import Path
 
 from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "brand" / "generated"
+SRC = ROOT / "brand" / "source"
 
 # ── Brand tokens (keep in sync with .hermes/brand/BRAND.md) ──────────────
-INK = (26, 26, 28)            # #1A1A1C
-SURFACE_INVERSE = (38, 38, 43)  # #26262B
-MARK_ON_INVERSE = (232, 232, 234)  # #E8E8EA
+BRAND_RED_DEEP = (196, 0, 30)       # #C4001E — splash / launch background
+BRAND_RED = (230, 0, 43)            # #E6002B — primary brand red
+BRAND_RED_BRIGHT = (255, 36, 64)    # #FF2440
+HIGHLIGHT = (255, 240, 242)         # #FFF0F2 — sparkles / highlights
 
-# ── Mark geometry (relative to canvas size 1.0, BRAND.md §2) ────────────
-# The Route mark: an angular folded path (map-route switchbacks), tilted
-# 20° clockwise so it reads as legs mid-stride. Flat reading: the letters
-# J + A fused — the back of the J flows into the long line of the A.
-STROKE = 0.11
-ROUTE_POINTS = [
-    (0.24, 0.62), (0.46, 0.62), (0.46, 0.38), (0.68, 0.38), (0.68, 0.66),
-]
-TILT_DEG = 20                 # clockwise rotation of the whole path
-FIT_MARGIN = 0.16             # mark fills 0.16..0.84 of the canvas
+# Canonical rasters (rasterized from brand/source/*.svg at 1536px).
+ICON_SQUARE = SRC / "jara-icon-square.png"    # full artwork, square
+ICON_ROUNDED = SRC / "jara-icon-rounded.png"  # pre-masked app kit
+EMBLEM = SRC / "jara-emblem.png"              # mark only, transparent
 
 
-def _rotated_points(deg: float):
-    import math
+def _load(name: str) -> Image.Image:
+    return Image.open(SRC / name).convert("RGBA")
 
-    rad = math.radians(deg)
-    c, s = math.cos(rad), math.sin(rad)
-    out = []
-    for x, y in ROUTE_POINTS:
-        dx, dy = x - 0.5, y - 0.5
-        # Screen coordinates (y down): this is CLOCKWISE as seen on screen.
-        out.append((0.5 + dx * c - dy * s, 0.5 + dx * s + dy * c))
+
+def _fit(img: Image.Image, w: int, h: int) -> Image.Image:
+    """Scale `img` to fit inside w×h, centered on a transparent canvas."""
+    s = min(w / img.width, h / img.height)
+    nw, nh = max(1, round(img.width * s)), max(1, round(img.height * s))
+    r = img.resize((nw, nh), Image.LANCZOS)
+    out = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    out.alpha_composite(r, ((w - nw) // 2, (h - nh) // 2))
     return out
 
 
-def draw_mark(draw: ImageDraw.ImageDraw, size: int, color) -> None:
-    """Draw the Route mark centered on a square canvas of `size` px.
-
-    All geometry is relative to `size`; render at a supersampled size and
-    downscale for smooth edges. Grayscale only."""
-    s = size
-    stroke = max(2, int(round(s * STROKE)))
-
-    pts = _rotated_points(TILT_DEG)
-
-    # Normalize: fit the (unstroked) path into the FIT_MARGIN box, centered.
-    xs = [p[0] for p in pts]
-    ys = [p[1] for p in pts]
-    w, h = max(xs) - min(xs), max(ys) - min(ys)
-    scale = min((1 - 2 * FIT_MARGIN) / w, (1 - 2 * FIT_MARGIN) / h)
-    cx = (max(xs) + min(xs)) / 2
-    cy = (max(ys) + min(ys)) / 2
-    fit = [(0.5 + (x - cx) * scale, 0.5 + (y - cy) * scale) for x, y in pts]
-
-    draw.line(
-        [(x * s, y * s) for x, y in fit],
-        fill=color,
-        width=stroke,
-        joint="curve",
-    )
+def _rgb(grad: str) -> Image.Image:
+    """A flat brand-red splash surface."""
+    img = Image.new("RGBA", (grad[0], grad[1]), (*BRAND_RED_DEEP, 255))
+    return img
 
 
-def render_mark(size: int, background=None, color=MARK_ON_INVERSE,
-                supersample: int = 4) -> Image.Image:
-    """Render the mark at `size` px with optional background, supersampled."""
-    big = size * supersample
-    if background is None:
-        img = Image.new("RGBA", (big, big), (0, 0, 0, 0))
-    else:
-        img = Image.new("RGBA", (big, big), (*background, 255))
-    draw = ImageDraw.Draw(img)
-    draw_mark(draw, big, color)
-    return img.resize((size, size), Image.LANCZOS)
+# ── iOS app icon (modern single-size format) ────────────────────────────
+IOS_ICON_SIZE = 1024
 
-
-# ── iOS app icon set ─────────────────────────────────────────────────────
-IOS_ICONS = [
-    ("Icon-App-20x20@1x.png", 20), ("Icon-App-20x20@2x.png", 40),
-    ("Icon-App-20x20@3x.png", 60), ("Icon-App-29x29@1x.png", 29),
-    ("Icon-App-29x29@2x.png", 58), ("Icon-App-29x29@3x.png", 87),
-    ("Icon-App-40x40@1x.png", 40), ("Icon-App-40x40@2x.png", 80),
-    ("Icon-App-40x40@3x.png", 120), ("Icon-App-60x60@2x.png", 120),
-    ("Icon-App-60x60@3x.png", 180), ("Icon-App-76x76@1x.png", 76),
-    ("Icon-App-76x76@2x.png", 152), ("Icon-App-83.5x83.5@2x.png", 167),
-    ("Icon-App-1024x1024@1x.png", 1024),
-]
-
-# ── Android mipmaps ──────────────────────────────────────────────────────
-ANDROID_MIPMAPS = [("mdpi", 48), ("hdpi", 72), ("xhdpi", 96),
-                   ("xxhdpi", 144), ("xxxhdpi", 192)]
-
-# ── iOS splash (mark-only, transparent — storyboard supplies the dark bg) ──
+# ── iOS splash: emblem-only, transparent; the storyboard paints the red bg ──
 IOS_SPLASHES = [("LaunchImage.png", (168, 185)),
                 ("LaunchImage@2x.png", (336, 370)),
                 ("LaunchImage@3x.png", (504, 555))]
 
-# ── Android launch backgrounds ──────────────────────────────────────────
+# ── Android mipmaps / launch images ──────────────────────────────────────
+ANDROID_MIPMAPS = [("mdpi", 48), ("hdpi", 72), ("xhdpi", 96),
+                   ("xxhdpi", 144), ("xxxhdpi", 192)]
+ANDROID_LAUNCH_SIZES = {"mdpi": 288, "hdpi": 432, "xhdpi": 576,
+                        "xxhdpi": 864, "xxxhdpi": 1152}
 ANDROID_LAUNCH = [("drawable-mdpi", (480, 800)), ("drawable-hdpi", (720, 1280)),
-                  ("drawable-xhdpi", (960, 1600)), ("drawable-xxhdpi", (1280, 1920)),
+                  ("drawable-xhdpi", (960, 1600)),
+                  ("drawable-xxhdpi", (1280, 1920)),
                   ("drawable-xxxhdpi", (1600, 2560))]
 
 
-def render_splash(width: int, height: int, color=MARK_ON_INVERSE) -> Image.Image:
-    """Splash: neutral surface + centered mark, sized by min dimension."""
-    img = Image.new("RGBA", (width, height), (*SURFACE_INVERSE, 255))
-    mark_size = int(min(width, height) * 0.34)
-    mark = render_mark(mark_size, background=None, color=color)
-    img.alpha_composite(mark, ((width - mark_size) // 2, (height - mark_size) // 2))
-    return img.convert("RGB")
-
-
 def ios_contents_json() -> dict:
-    """Contents.json for the generated AppIcon.appiconset."""
-    images = []
-    for filename, size in IOS_ICONS:
-        parts = filename.replace(".png", "").split("@")
-        scale = parts[1].rstrip("x") if len(parts) > 1 else "1x"
-        dim = float(parts[0].rsplit("x", 1)[1])
-        images.append({
-            "filename": filename,
-            "idiom": "ios-marketing" if "1024" in filename else "iphone",
-            "scale": scale,
-            "size": f"{dim:g}x{dim:g}",
-        })
-    return {"images": images, "info": {"author": "xcode", "version": 1}}
+    """Contents.json for the single-size AppIcon.appiconset."""
+    return {
+        "images": [{
+            "filename": "AppIcon.png",
+            "idiom": "universal",
+            "platform": "ios",
+            "size": "1024x1024",
+        }],
+        "info": {"author": "xcode", "version": 1},
+    }
+
+
+def render_splash_surface(w: int, h: int) -> Image.Image:
+    """Brand-red launch surface with the emblem centered."""
+    img = _rgb((w, h))
+    em = _load("jara-emblem.png")
+    mark = _fit(em, int(min(w, h) * 0.62), int(min(w, h) * 0.62))
+    img.alpha_composite(mark, ((w - mark.width) // 2, (h - mark.height) // 2))
+    return img.convert("RGB")
 
 
 def generate_all() -> list[Path]:
     written: list[Path] = []
+    ic_sq = _load("jara-icon-square.png")
+    ic_rnd = _load("jara-icon-rounded.png")
+    em = _load("jara-emblem.png")
 
-    # iOS app icon set
+    # iOS app icon (single 1024 universal; display sizes derived at build)
     ios_dir = OUT / "ios" / "AppIcon.appiconset"
     ios_dir.mkdir(parents=True, exist_ok=True)
-    for filename, size in IOS_ICONS:
-        render_mark(size, background=SURFACE_INVERSE).save(ios_dir / filename)
-        written.append(ios_dir / filename)
+    p = ios_dir / "AppIcon.png"
+    _fit(ic_rnd, IOS_ICON_SIZE, IOS_ICON_SIZE).save(p)
+    written.append(p)
     (ios_dir / "Contents.json").write_text(json.dumps(ios_contents_json(), indent=2))
     written.append(ios_dir / "Contents.json")
 
-    # Android mipmaps + launch image (mark on transparent, centered)
-    launch_sizes = {"mdpi": 288, "hdpi": 432, "xhdpi": 576,
-                    "xxhdpi": 864, "xxxhdpi": 1152}
+    # iOS splash — emblem baked onto brand red, OPAQUE.
+    # iOS composites legacy launch-screen images onto white, so a transparent
+    # overlay would show a white box; baking the red surface avoids that.
+    for filename, (w, h) in IOS_SPLASHES:
+        p = OUT / "ios" / filename
+        p.parent.mkdir(parents=True, exist_ok=True)
+        canvas = Image.new("RGBA", (w, h), (*BRAND_RED_DEEP, 255))
+        mark = _fit(em, int(min(w, h) * 0.92), int(min(w, h) * 0.92))
+        canvas.alpha_composite(mark, ((w - mark.width) // 2, (h - mark.height) // 2))
+        canvas.convert("RGB").save(p)
+        written.append(p)
+
+    # Android mipmaps: launcher icon (square) + launch_image (emblem)
     for density, size in ANDROID_MIPMAPS:
         d = OUT / "android" / f"mipmap-{density}"
         d.mkdir(parents=True, exist_ok=True)
         p = d / "ic_launcher.png"
-        render_mark(size, background=SURFACE_INVERSE).save(p)
+        _fit(ic_sq, size, size).save(p)
         written.append(p)
         lp = d / "launch_image.png"
-        render_mark(launch_sizes[density], background=None,
-                    color=MARK_ON_INVERSE).save(lp)
+        _fit(em, ANDROID_LAUNCH_SIZES[density], ANDROID_LAUNCH_SIZES[density]).save(lp)
         written.append(lp)
 
-    # iOS splash — mark only on transparent; the storyboard paints the
-    # #26262B background.
-    for filename, (w, h) in IOS_SPLASHES:
-        p = OUT / "ios" / filename
-        p.parent.mkdir(parents=True, exist_ok=True)
-        render_mark(min(w, h), background=None,
-                    color=MARK_ON_INVERSE).save(p)
-        written.append(p)
-
-    # Android launch backgrounds + 12-style icon (reuse mipmap)
+    # Android launch backgrounds (composite; app splash uses the XML layer-list)
     for density, (w, h) in ANDROID_LAUNCH:
         d = OUT / "android" / density
         d.mkdir(parents=True, exist_ok=True)
         p = d / "launch_background.png"
-        render_splash(w, h).save(p)
+        render_splash_surface(w, h).save(p)
         written.append(p)
 
     # Store icon + web assets
     store = OUT / "store"
     store.mkdir(parents=True, exist_ok=True)
     p = store / "icon-512.png"
-    render_mark(512, background=SURFACE_INVERSE).save(p)
+    _fit(ic_sq, 512, 512).save(p)
     written.append(p)
 
     web = OUT / "web"
     web.mkdir(parents=True, exist_ok=True)
     for name, size in [("favicon-32.png", 32), ("favicon-180.png", 180)]:
         p = web / name
-        render_mark(size, background=SURFACE_INVERSE).save(p)
+        _fit(ic_sq, size, size).save(p)
         written.append(p)
-    social = render_splash(1200, 630, color=MARK_ON_INVERSE)
+    social = render_splash_surface(1200, 630)
     social.save(web / "social-preview.png")
     written.append(web / "social-preview.png")
 
@@ -216,11 +172,11 @@ def main() -> None:
 
     if args.preview:
         (ROOT / "brand").mkdir(parents=True, exist_ok=True)
-        render_mark(512, background=SURFACE_INVERSE).save(
-            ROOT / "brand" / "preview-mark-dark.png")
-        render_mark(512, background=(255, 255, 255), color=INK).save(
-            ROOT / "brand" / "preview-mark-light.png")
-        print("previews written to brand/preview-mark-*.png")
+        _fit(_load("jara-icon-rounded.png"), 1024, 1024).save(
+            ROOT / "brand" / "preview-icon.png")
+        _fit(_load("jara-emblem.png"), 512, 512).save(
+            ROOT / "brand" / "preview-emblem.png")
+        print("previews written to brand/preview-icon.png, brand/preview-emblem.png")
         return
 
     written = generate_all()
