@@ -1,19 +1,17 @@
 #!/bin/bash
 # jara iphone-dev pre-flight (portal action step 0).
 # Makes the iPhone reachable + DDI-staged before flutter touches it, with
-# self-healing for the known failure modes and actionable errors otherwise.
+# self-healing for the known local failure modes and actionable errors otherwise.
+# Local-only: works over USB or when the iPhone is on the same (home) Wi-Fi.
 #
 # Failure modes handled:
-#  1. Lazy CoreDeviceService after tunnel drop -> bounce bridge (off-LAN)
-#     or just force rediscovery (on-LAN).
+#  1. Lazy CoreDeviceService after tunnel drop -> force rediscovery.
 #  2. DDI not staged -> mount it (needs unlocked phone), retry 3x.
 #  3. Missing pair record (empty /var/db/lockdown + phone unreachable)
 #     -> say "plug USB + Trust" instead of burning the wait loop.
 set -u
 
 CDID="74CDE8DE-2013-5E95-A0F2-7207A669166D"          # CoreDevice ID
-BRIDGE_LABEL="com.jara.coredevice-tailnet"
-BRIDGE_PLIST="/Users/jakob/Repos/jara/tool/com.jara.coredevice-tailnet.plist"
 
 dstate() {
   xcrun devicectl list devices 2>/dev/null \
@@ -26,15 +24,8 @@ reachable() { [ "$(dstate)" = "connected" ] || [ "$(dstate)" = "available" ]; }
 # --- 1. reachability -------------------------------------------------------
 if ! reachable; then
   echo "device not reachable — attempting recovery"
-  if launchctl print "gui/$(id -u)/$BRIDGE_LABEL" >/dev/null 2>&1; then
-    echo "- bridge loaded: bouncing it (lazy-discovery repair)"
-    launchctl bootout "gui/$(id -u)/$BRIDGE_LABEL" 2>/dev/null
-    pkill -f '[c]oredevice_bridge.py --mode host' 2>/dev/null
-    sleep 2
-    launchctl bootstrap "gui/$(id -u)" "$BRIDGE_PLIST" 2>/dev/null
-  fi
-  # Force CoreDeviceService to rediscover either way (user-owned XPC,
-  # respawns fresh on next devicectl call).
+  # Force CoreDeviceService to rediscover (user-owned XPC, respawns fresh on
+  # next devicectl call). Local link only — no bridge needed.
   pkill -f CoreDeviceService 2>/dev/null
   for _i in $(seq 1 12); do
     reachable && break
@@ -53,8 +44,8 @@ if ! reachable; then
     echo "   unlock it and tap Trust (one-time; cannot be done over the air)."
   else
     echo "-> Unlock the phone and keep the screen ON (auto-lock drops the tunnel)."
-    echo "-> Phone away from home? Start the 'iPhone Bridge' action first."
-    echo "-> On cellular only? Not possible — associate any Wi-Fi network."
+    echo "-> Make sure the iPhone is on the SAME home Wi-Fi as the Mac mini"
+    echo "   (or USB-tethered) — remote/off-LAN development is not supported."
   fi
   exit 1
 fi
