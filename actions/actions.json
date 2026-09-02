@@ -2,7 +2,7 @@
   "$schema": "./schema.json",
   "source": "jara",
   "sourceName": "JARA",
-  "sourceDescription": "The running app \u2014 iOS simulator and device workflows",
+  "sourceDescription": "The running app — iOS simulator and device workflows",
   "container": "code-server",
   "workdir": "/home/coder/project/jara",
   "host_workdir": "/Users/jakob/Repos/jara",
@@ -24,9 +24,10 @@
       },
       "commands": [
         {
-          "description": "Boot simulator (idempotent)",
+          "description": "Idempotent.",
           "command": "xcrun simctl boot 094D4A15-891A-4E86-9C8F-1AC2CAB460B3 2>/dev/null || true; echo 'Simulator booted (or was already running)'",
-          "run_on": "host"
+          "run_on": "host",
+          "name": "Boot simulator"
         },
         {
           "description": "Wait until fully booted",
@@ -49,9 +50,10 @@
           "run_on": "host"
         },
         {
-          "description": "Capture evidence screenshot",
+          "description": "Save to smoketest/output/.",
           "command": "mkdir -p smoketest/output && xcrun simctl io 094D4A15-891A-4E86-9C8F-1AC2CAB460B3 screenshot smoketest/output/sim-launch.png >/dev/null && echo 'Screenshot: /Users/jakob/Repos/jara/smoketest/output/sim-launch.png'",
-          "run_on": "host"
+          "run_on": "host",
+          "name": "Capture evidence shot"
         }
       ],
       "stop_commands": [
@@ -71,7 +73,7 @@
       "id": "sim-rebuild",
       "name": "Rebuild & Relaunch",
       "description": "Rebuild + reinstall + relaunch on the booted simulator.",
-      "info": "For after code edits. No boot step \u2014 requires the simulator to already be booted.",
+      "info": "For after code edits. No boot step — requires the simulator to already be booted.",
       "icon": "Hammer",
       "color": "slate",
       "confirmMessage": "Rebuild and relaunch JARA on the simulator? Requires the simulator to already be booted.",
@@ -92,9 +94,10 @@
           "run_on": "host"
         },
         {
-          "description": "Capture evidence screenshot",
+          "description": "Save to smoketest/output/.",
           "command": "mkdir -p smoketest/output && xcrun simctl io 094D4A15-891A-4E86-9C8F-1AC2CAB460B3 screenshot smoketest/output/sim-rebuild.png >/dev/null 2>&1 && echo 'Screenshot: /Users/jakob/Repos/jara/smoketest/output/sim-rebuild.png' || echo 'Screenshot skipped (simulator not booted)'",
-          "run_on": "host"
+          "run_on": "host",
+          "name": "Capture evidence shot"
         }
       ]
     },
@@ -109,7 +112,7 @@
       "commands": [
         {
           "description": "Capture timestamped screenshot",
-          "command": "TS=$(date +%s); mkdir -p smoketest/output; xcrun simctl io booted screenshot \"smoketest/output/sim-${TS}.png\" 2>/dev/null && echo \"Screenshot: /Users/jakob/Repos/jara/smoketest/output/sim-${TS}.png\" || { echo 'ERROR: no booted simulator \u2014 run Launch on Simulator first'; exit 1; }",
+          "command": "TS=$(date +%s); mkdir -p smoketest/output; xcrun simctl io booted screenshot \"smoketest/output/sim-${TS}.png\" 2>/dev/null && echo \"Screenshot: /Users/jakob/Repos/jara/smoketest/output/sim-${TS}.png\" || { echo 'ERROR: no booted simulator — run Launch on Simulator first'; exit 1; }",
           "run_on": "host"
         }
       ]
@@ -117,7 +120,7 @@
     {
       "id": "smoke-gate",
       "name": "Run Smoketest Gate",
-      "description": "Full Maestro smoketest gate (dev\u2192main PR gate).",
+      "description": "Full Maestro smoketest gate (dev→main PR gate).",
       "info": "4 flows via tool/smoketest.sh: boots the sim, builds, installs, plays GPS waypoints, runs all flows. ~2-4 min.",
       "note": "Reboots the simulator.",
       "icon": "Rocket",
@@ -125,9 +128,10 @@
       "confirmMessage": "Run the full smoketest gate? Takes ~2-4 minutes and will reboot the simulator.",
       "commands": [
         {
-          "description": "Run smoketest gate (tool/smoketest.sh)",
+          "description": "tool/smoketest.sh — boots sim, builds, installs, plays GPS waypoints, runs all flows.",
           "command": "bash tool/smoketest.sh",
-          "run_on": "host"
+          "run_on": "host",
+          "name": "Run smoketest gate"
         }
       ]
     },
@@ -136,7 +140,7 @@
       "name": "iPhone Dev Session",
       "description": "Build+sign, install & launch JARA on the iPhone with hot reload.",
       "info": "GUI-context helper signs the build (SSH cannot sign on this Mac). Works over USB or home Wi-Fi.",
-      "note": "Requires an ACTIVE GUI session on the Mac mini \u2014 the launchctl GUI domain hangs when the console is inactive (away from home, the build can stall for hours).",
+      "note": "Requires an ACTIVE GUI session on the Mac mini — the launchctl GUI domain hangs when the console is inactive (away from home, the build can stall for hours).",
       "icon": "Rocket",
       "color": "slate",
       "lifecycle": "service",
@@ -149,31 +153,36 @@
       },
       "commands": [
         {
-          "description": "Pre-flight: reachability + DDI staging (self-healing)",
+          "description": "Reachability + DDI staging (self-healing).",
           "command": "bash /Users/jakob/Repos/jara/tool/iphone-dev-preflight.sh",
-          "run_on": "host"
+          "run_on": "host",
+          "name": "Pre-flight"
         },
         {
-          "description": "Build and sign via GUI-context helper (LaunchAgent)",
+          "description": "Via GUI-context helper (LaunchAgent).",
           "command": "rm -f /tmp/jara-build-helper.log; launchctl bootstrap gui/$(id -u) /Users/jakob/Repos/jara/tool/com.jara.build-ios-helper.plist 2>/dev/null || launchctl kickstart -k gui/$(id -u)/com.jara.build-ios-helper 2>/dev/null || { echo 'helper launch failed'; exit 1; }; for i in $(seq 1 60); do grep -q HELPER_DONE /tmp/jara-build-helper.log 2>/dev/null && break; sleep 5; done; grep -q 'HELPER_DONE rc=0' /tmp/jara-build-helper.log && echo 'BUILD+SIGN OK' || { echo 'BUILD FAILED:'; tail -8 /tmp/jara-build-helper.log; exit 1; }",
-          "run_on": "host"
+          "run_on": "host",
+          "name": "Build and sign"
         },
         {
-          "description": "Start dev-session helper (GUI LaunchAgent: attached flutter run)",
+          "description": "GUI LaunchAgent runs an attached flutter run.",
           "command": "launchctl bootout gui/$(id -u)/com.jara.dev-session 2>/dev/null; rm -f /tmp/jara-dev.log /tmp/jara-dev.pid /tmp/jara-dev.ready /tmp/jara-attach.fifo; launchctl bootstrap gui/$(id -u) /Users/jakob/Repos/jara/tool/com.jara.dev-session.plist 2>/dev/null || launchctl kickstart -k gui/$(id -u)/com.jara.dev-session 2>/dev/null || { echo 'dev-session helper launch failed'; exit 1; }; sleep 2; launchctl print gui/$(id -u)/com.jara.dev-session 2>/dev/null | grep -E 'state =|pid =' | head -2 || echo 'agent ok'; echo dev-session-started",
-          "run_on": "host"
+          "run_on": "host",
+          "name": "Start dev-session helper"
         },
         {
-          "description": "Wait for launch + attach (fail fast on local-network denial)",
+          "description": "Fail fast on local-network denial.",
           "command": "for i in $(seq 1 60); do grep -qE 'Syncing files to device|A Dart VM Service' /tmp/jara-dev.log 2>/dev/null && break; grep -qiE 'could not access the local network|SocketException: Send failed|no route to host|error launching|failed to build|No supported devices|error 1011|unable to locate a device|DEV-SESSION: ended' /tmp/jara-dev.log 2>/dev/null && { echo 'LAUNCH FAILED:'; tail -12 /tmp/jara-dev.log; echo; echo 'If it is a Local Network denial (errno 65): the iPhone Dev Session runs in the GUI context; approve the Local Network / Automation prompt once via RustDesk (System Settings > Privacy & Security).'; exit 1; }; sleep 3; done; tail -8 /tmp/jara-dev.log; grep -q 'Syncing files to device' /tmp/jara-dev.log && { touch /tmp/jara-dev.ready; echo DEV-SESSION-READY; } || { echo 'TIMEOUT waiting for attach \\u2014 check /tmp/jara-dev.log (phone unlocked?)'; exit 1; }",
-          "run_on": "host"
+          "run_on": "host",
+          "name": "Wait for launch + attach"
         }
       ],
       "stop_commands": [
         {
-          "description": "Stop the dev session (bootout LaunchAgent)",
+          "description": "bootout the LaunchAgent.",
           "command": "launchctl bootout gui/$(id -u)/com.jara.dev-session 2>/dev/null; for i in $(seq 1 15); do kill -0 $(cat /tmp/jara-dev.pid 2>/dev/null) 2>/dev/null || break; sleep 1; done; kill -0 $(cat /tmp/jara-dev.pid 2>/dev/null) 2>/dev/null && echo 'WARNING: session still alive' || echo 'dev session stopped'; rm -f /tmp/jara-dev.pid /tmp/jara-dev.ready /tmp/jara-attach.fifo",
-          "run_on": "host"
+          "run_on": "host",
+          "name": "Stop the dev session"
         }
       ]
     },
@@ -181,15 +190,16 @@
       "id": "hot-restart",
       "name": "Hot Restart",
       "description": "Full framework restart on the running iPhone dev session (clears desync/error screens).",
-      "info": "Sends 'R' to the dev session's FIFO \u2014 rebuilds the widget tree from scratch. Use when a reload left the app in a broken state (e.g. 'Lookup failed' inspector error).",
+      "info": "Sends 'R' to the dev session's FIFO — rebuilds the widget tree from scratch. Use when a reload left the app in a broken state (e.g. 'Lookup failed' inspector error).",
       "icon": "Hammer",
       "color": "slate",
       "confirmMessage": "Hot restart the running iPhone dev session?",
       "commands": [
         {
-          "description": "Trigger hot restart via FIFO (guarded)",
+          "description": "Via the dev-session FIFO (guarded).",
           "command": "[ -p /tmp/jara-attach.fifo ] || { echo 'No dev session FIFO \\u2014 start iPhone Dev Session first'; exit 1; }; [ -f /tmp/jara-dev.pid ] && kill -0 $(cat /tmp/jara-dev.pid 2>/dev/null) 2>/dev/null || { echo 'Dev session not running \\u2014 start iPhone Dev Session first'; exit 1; }; perl -e 'alarm 6; exec @ARGV' sh -c 'echo R > /tmp/jara-attach.fifo' 2>/dev/null && { echo R-sent-restarting; sleep 5; tail -4 /tmp/jara-dev.log; } || { echo 'FIFO write timed out \\u2014 debugger not live; restart the dev session'; exit 1; }",
-          "run_on": "host"
+          "run_on": "host",
+          "name": "Trigger hot restart"
         }
       ]
     },
@@ -197,15 +207,16 @@
       "id": "hot-reload",
       "name": "Hot Reload",
       "description": "Hot-reload Dart code on the running iPhone dev session.",
-      "info": "Sends 'r' to the dev session's FIFO stdin \u2014 reloads on the device in ~1s.",
+      "info": "Sends 'r' to the dev session's FIFO stdin — reloads on the device in ~1s.",
       "icon": "Play",
       "color": "slate",
       "confirmMessage": "Hot reload the running iPhone dev session?",
       "commands": [
         {
-          "description": "Trigger hot reload via FIFO (guarded)",
+          "description": "Via the dev-session FIFO (guarded).",
           "command": "[ -p /tmp/jara-attach.fifo ] || { echo 'No dev session FIFO \\u2014 start iPhone Dev Session first'; exit 1; }; [ -f /tmp/jara-dev.pid ] && kill -0 $(cat /tmp/jara-dev.pid 2>/dev/null) 2>/dev/null || { echo 'Dev session not running \\u2014 start iPhone Dev Session first'; exit 1; }; perl -e 'alarm 6; exec @ARGV' sh -c 'echo r > /tmp/jara-attach.fifo' 2>/dev/null && { echo r-sent-reloading; sleep 3; tail -4 /tmp/jara-dev.log; } || { echo 'FIFO write timed out \\u2014 debugger not live; restart the dev session'; exit 1; }",
-          "run_on": "host"
+          "run_on": "host",
+          "name": "Trigger hot reload"
         }
       ]
     },
